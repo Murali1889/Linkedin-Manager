@@ -62,6 +62,7 @@ const BrowserViews = ({ accounts, visibleAccountId, setProfileName }) => {
       view.addEventListener("dom-ready", () => {
         // view.openDevTools();
         injectCustomJS(view, id);
+        notificationJs(view, id);
         getAccountName(id);
       });
     }
@@ -266,7 +267,38 @@ const BrowserViews = ({ accounts, visibleAccountId, setProfileName }) => {
         let shouldCancelProcessing = false;
         log('LinkedIn Customizer content script loaded in view ${id}');
   
-        let previousNamesList = localStorage.getItem('namesList') || []
+        const dbName = 'ProfilesDB';
+        const storeName = 'namesListStore';
+        let previousNamesList = [];
+  
+        const openDBRequest = indexedDB.open(dbName, 1);
+  
+        openDBRequest.onupgradeneeded = function(event) {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName, { keyPath: 'id' });
+          }
+        };
+  
+        openDBRequest.onsuccess = function(event) {
+          const db = event.target.result;
+          const transaction = db.transaction(storeName, 'readonly');
+          const store = transaction.objectStore(storeName);
+          const getAllRequest = store.getAll();
+  
+          getAllRequest.onsuccess = function(event) {
+            previousNamesList = event.target.result.map(item => item.profile);
+            startScript(); // Proceed with the rest of your script
+          };
+  
+          getAllRequest.onerror = function(error) {
+            console.error('Failed to retrieve namesList from IndexedDB:', error);
+          };
+        };
+  
+        openDBRequest.onerror = function(error) {
+          console.error('Failed to open IndexedDB:', error);
+        };
   
         function updateNamesList() {
           if (isProcessing) {
@@ -277,12 +309,13 @@ const BrowserViews = ({ accounts, visibleAccountId, setProfileName }) => {
           isProcessing = true;
           shouldCancelProcessing = false;
           try {
-            const namesList = JSON.parse(localStorage.getItem('namesList')) || [];
+            const namesList = previousNamesList || [];
             const ulElement = document.querySelector('ul.msg-conversations-container__conversations-list');
             if (ulElement && namesList.length > 0) {
               let liElements = Array.from(ulElement.querySelectorAll('li'));
               const batchSize = 100; // Process 100 items at a time
               let index = 0;
+  
               function processBatch() {
                 if (shouldCancelProcessing) {
                   log('Processing canceled');
@@ -384,7 +417,7 @@ const BrowserViews = ({ accounts, visibleAccountId, setProfileName }) => {
             } else {
               if (ulElement) {
                 ulElement.querySelectorAll('li').forEach(li => {
-                  li.style.display='block';
+                  li.style.display = 'block';
                   const nameTag = li.querySelector('h3.msg-conversation-listitem__participant-names span.truncate');
                   if (nameTag) {
                     const name = nameTag.textContent.trim();
@@ -398,9 +431,8 @@ const BrowserViews = ({ accounts, visibleAccountId, setProfileName }) => {
               }
               isProcessing = false;
             }
-          } catch (error) {
-            log('Error updating names list: ' + error.message);
-            isProcessing = false;
+          } catch (e) {
+            console.log(e);
           }
         }
   
@@ -412,15 +444,33 @@ const BrowserViews = ({ accounts, visibleAccountId, setProfileName }) => {
   
           namesListInterval = setInterval(() => {
             try {
-              const currentNamesList = localStorage.getItem('namesList') || [];
-              if (currentNamesList !== previousNamesList) {
-                log('Names List changed');
-                previousNamesList = currentNamesList;
-                pendingUpdate = true;
-                updateNamesList(); // Immediately update on localStorage change
-              }
+              const dbRequest = indexedDB.open(dbName, 1);
+              dbRequest.onsuccess = function(event) {
+                const db = event.target.result;
+                const transaction = db.transaction(storeName, 'readonly');
+                const store = transaction.objectStore(storeName);
+                const getAllRequest = store.getAll();
+  
+                getAllRequest.onsuccess = function(event) {
+                  const currentNamesList = event.target.result.map(item => item.profile);
+                  if (JSON.stringify(currentNamesList) !== JSON.stringify(previousNamesList)) {
+                    log('Names List changed');
+                    previousNamesList = currentNamesList;
+                    pendingUpdate = true;
+                    updateNamesList(); // Immediately update on data change
+                  }
+                };
+  
+                getAllRequest.onerror = function(error) {
+                  log('Failed to retrieve namesList from IndexedDB:', error);
+                };
+              };
+  
+              dbRequest.onerror = function(error) {
+                log('Failed to open IndexedDB:', error);
+              };
             } catch (error) {
-              log('Error parsing names list: ' + error.message);
+              log('Error fetching names list:', error.message);
             }
           }, 1000);
   
@@ -447,31 +497,218 @@ const BrowserViews = ({ accounts, visibleAccountId, setProfileName }) => {
     `;
   
     view.executeJavaScript(jsCode)
-      .then(() => { 
+      .then(() => {
         console.log(`Custom JS injected into WebView ${id}`);
         setScriptLoaded(true);
       })
       .catch(err => console.error(`Failed to inject custom JS into WebView ${id}:`, err));
   };
   
+  const notificationJs = (view, id) => {
+    const jsCode = `
+      (function() {
+        const log = (message) => {
+          console.log(message);
+        };
   
+        let lastProcessedNotification = { senderName: '', notificationCount: '' };
   
+        function sendToMainProcess(senderName, accountName, notificationText) {
+          console.log(\`Sender: \${senderName}, Account: \${accountName}, Notification: \${notificationText}\`);
+          if (notificationText !== '0 new notifications') {
+            new Notification(\`Message to \${accountName}\`, {
+              body: \`From \${senderName}: \${notificationText}\`,
+            });
+          }
+        }
   
+        function extractNamesFromLiElement(liElement) {
+          const log = (message) => {
+            console.log(message);
+          };
+        
+          try {
+            // Extract the sender's name from the li element
+            const senderNameElement = liElement.querySelector('h3.msg-conversation-listitem__participant-names span.truncate');
+            const senderName = senderNameElement ? senderNameElement.textContent.trim() : null;
+        
+            if (!senderName) {
+              log('Failed to extract sender name from the li element.');
+              return null;
+            }
+        
+            // Retrieve the account name from localStorage
+            const accountName = localStorage.getItem('name') || 'Unknown Account';
+        
+            log(\`Names extracted: Sender - \${senderName}, Account - \${accountName}\`);
+        
+            return {
+              senderAccount: senderName,
+              myAccount: accountName,
+            };
+          } catch (error) {
+            log('Error extracting names:', error);
+            return null;
+          }
+        }
+        
+  
+        function handleNotificationChange(conversationRowDiv, firstLi) {
+          log('Handling notification change...');
+          const conversationStatusDivs = conversationRowDiv.querySelectorAll('div.msg-conversation-card__conversation-status');
+          log('Found conversation status divs:', conversationStatusDivs);
+  
+          if (conversationStatusDivs.length > 0) {
+            const notificationBadge = conversationStatusDivs[conversationStatusDivs.length - 1].querySelector('span.notification-badge');
+            let notificationText = '0 new notifications';
+            if (notificationBadge) {
+              notificationText = notificationBadge.querySelector('span.a11y-text').textContent.trim();
+            }
+  
+            const spanElement = conversationRowDiv.closest('li.msg-conversation-listitem')
+                                                  .querySelector('.msg-conversation-card__inbox-shortcuts button span.visually-hidden');
+            if (spanElement && spanElement.textContent.includes('Open the options list in your conversation with')) {
+              log('New message detected with text:', spanElement.textContent);
+              const names = extractNamesFromLiElement(firstLi);
+              if (names) {
+                const { myAccount, senderAccount } = names;
+                log(\`Notification details - Sender: \${senderAccount}, Account: \${myAccount}, Notification: \${notificationText}\`);
+  
+                if (senderAccount !== lastProcessedNotification.senderName || notificationText !== lastProcessedNotification.notificationCount) {
+                  sendToMainProcess(senderAccount, myAccount, notificationText);
+                  lastProcessedNotification = { senderName: senderAccount, notificationCount: notificationText };
+                } else {
+                  log('Notification already processed. Skipping.');
+                }
+              }
+            } else {
+              log('No relevant span element or text found in the conversation status.');
+            }
+          } else {
+            log('No conversation status div found in the first li element.');
+            lastProcessedNotification.notificationCount = '0 new notifications';
+          }
+        }
+  
+        function observeConversationRow(conversationRowDiv, firstLi) {
+          log('Observer set up for the conversation row div.');
+          const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+              if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                log('Mutation detected in conversation row div:', mutation);
+                handleNotificationChange(conversationRowDiv, firstLi);
+              }
+            });
+          });
+  
+          observer.observe(conversationRowDiv, {
+            attributes: true,
+            childList: true,
+            subtree: true,
+          });
+  
+          log('Observer is now watching the conversation row div for changes.');
+        }
+  
+        function startScript() {
+          log('Running startScript function.');
+  
+          const firstLi = document.querySelector('ul.msg-conversations-container__conversations-list li.msg-conversation-listitem');
+          if (firstLi) {
+            log('First li element found:', firstLi);
+            const conversationRowDiv = firstLi.querySelector('div.msg-conversation-card__row.msg-conversation-card__body-row');
+            log('Conversation row div:', conversationRowDiv);
+            if (conversationRowDiv) {
+              log('Conversation row div found:', conversationRowDiv);
+              observeConversationRow(conversationRowDiv, firstLi);
+              handleNotificationChange(conversationRowDiv, firstLi); // Initial check
+            } else {
+              log('No conversation row div found in the first li element.');
+            }
+          } else {
+            log('No conversation list item found.');
+          }
+        }
+  
+        const intervalId = setInterval(() => {
+          log('Checking for the conversation list...');
+          const conversationList = document.querySelector('ul.msg-conversations-container__conversations-list');
+          if (conversationList) {
+            clearInterval(intervalId);
+            log('Conversation list found. Starting main script logic.');
+            startScript();
+          } else {
+            log('Conversation list not found yet, retrying...');
+          }
+        }, 1000);
+      })();
+    `;
+  
+      view
+        .executeJavaScript(jsCode)
+        .then(() => {
+          console.log(`Custom JS injected into WebView ${id}`);
+          setScriptLoaded(true);
+        })
+        .catch((err) =>
+          console.error(`Failed to inject custom JS into WebView ${id}:`, err)
+        );
+    };
   
   
   
   const updateLocalStorageNamesList = () => {
-    let namesList = JSON.stringify(selectedProfiles)
+    // No need to convert to JSON string
+    let namesList = selectedProfiles;
+  
     Array.from(containerRef.current.children).forEach(child => {
       const view = child.querySelector("webview");
       if (view && scriptLoaded) {
         view.executeJavaScript(`
-          localStorage.setItem('namesList', '${namesList}');
-        `).then(() => console.log(`Updated namesList in localStorage for WebView ${view.getAttribute('data-id')}`))
-        .catch(err => console.error(`Failed to update namesList for WebView ${view.getAttribute('data-id')}:`, err));
+          (function() {
+            const dbName = 'ProfilesDB';
+            const storeName = 'namesListStore';
+  
+            // Open IndexedDB database
+            const request = indexedDB.open(dbName, 1);
+  
+            request.onupgradeneeded = (event) => {
+              const db = event.target.result;
+              if (!db.objectStoreNames.contains(storeName)) {
+                db.createObjectStore(storeName, { keyPath: 'id' });
+              }
+            };
+  
+            request.onsuccess = (event) => {
+              const db = event.target.result;
+              const transaction = db.transaction(storeName, 'readwrite');
+              const store = transaction.objectStore(storeName);
+  
+              // Clear existing store
+              store.clear().onsuccess = () => {
+                const namesArray = ${JSON.stringify(namesList)}.map((profile, index) => ({ id: index, profile }));
+                namesArray.forEach(item => store.add(item));
+              };
+  
+              transaction.oncomplete = () => {
+                console.log('IndexedDB updated with namesList in WebView');
+              };
+  
+              transaction.onerror = (error) => {
+                console.error('Failed to update IndexedDB in WebView:', error);
+              };
+            };
+  
+            request.onerror = (error) => {
+              console.error('Failed to open IndexedDB in WebView:', error);
+            };
+          })();
+        `).then(() => console.log(`Updated namesList in IndexedDB for WebView ${view.getAttribute('data-id')}`))
+          .catch(err => console.error(`Failed to update namesList for WebView ${view.getAttribute('data-id')}:`, err));
       }
     });
   };
+  
 
   return <div ref={containerRef} style={{ position: "relative", width: "100%", height: "100%" }} />;
 };

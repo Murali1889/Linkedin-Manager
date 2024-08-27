@@ -33,19 +33,6 @@ function createWindow() {
     mainWindow = null;
   });
 
-  mainWindow.webContents.on("console-message", (evt, logLevel, message, lineNumber, source) => {
-    console.log(message)
-    if (isJsonString(message) && message.includes('"request"')) {
-      let jsn = JSON.parse(message);
-
-      if (jsn.request === 'notification') {
-        console.log(`Notification received from WebView with id ${jsn.id}: ${jsn.notification}`);
-        // Handle the notification here as needed
-        new Notification({ title: 'New Message', body: jsn.notification }).show();
-      }
-    }
-  });
-
   // Check for updates after the window is created
   autoUpdater.checkForUpdatesAndNotify();
 
@@ -88,11 +75,6 @@ app.on('window-all-closed', function () {
 });
 
 app.on('activate', function () {
-  if (Notification.isSupported()) {
-    new Notification({ title: 'App Ready', body: 'The app is ready.' }).show();
-  } else {
-    console.log('Notifications are not supported on this platform.');
-  }
   if (mainWindow === null) {
     createWindow();
   }
