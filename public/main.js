@@ -24,7 +24,7 @@ function createWindow() {
     fullscreenable: true,
   });
 
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
   const indexPath = path.join(__dirname, '../build/index.html');
   mainWindow.loadURL(`file://${indexPath}`);
   // mainWindow.loadURL('https://locolhost:3000')
