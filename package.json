@@ -146,19 +146,11 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "Murali1889",
-        "repo": "Linkedin-Manager",
+        "owner": "Muralivvrsn",
+        "repo": "LinkedinManager",
         "releaseType": "release"
       }
     ]
-  }
+  },
+  "proxy": "http://localhost:4000"
 }
-
-
-
-
-
-
-
-
-

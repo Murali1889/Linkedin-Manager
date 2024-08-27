@@ -3,7 +3,7 @@ name: Build and Release Electron App
 on:
   push:
     tags:
-      - '*'  # This triggers the workflow on any tag push
+      - '*'  # Triggers the workflow on any tag push
 
 jobs:
   build-and-release:
@@ -49,10 +49,10 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: Electron-${{ matrix.os }}
-          path: dist/  # Adjust to match your output path
+          path: dist/
           retention-days: 7
 
       - name: Publish to GitHub Releases
-        if: ${{ matrix.os == 'macos-latest' }}  # Publish only once, on macOS
+        if: ${{ matrix.os == 'macos-latest' }}
         run: |
           DEBUG=electron-builder yarn electron:publish --publish=always
