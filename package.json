@@ -6,6 +6,10 @@
   "author": "Murali",
   "description": "My fantastic Electron app",
   "homepage": "./",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Murali1889/Linkedin-Manager"
+  },
   "dependencies": {
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
@@ -150,11 +154,6 @@
         "repo": "Linkedin-Manager",
         "releaseType": "release"
       }
-    ],
-    "repository": {
-      "type": "git",
-      "url": "https://github.com/Murali1889/Linkedin-Manager"
-    }
-  },
-  "proxy": "http://localhost:4000"
+    ]
+  }
 }
