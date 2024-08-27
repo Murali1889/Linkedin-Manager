@@ -151,6 +151,14 @@
         "releaseType": "release"
       }
     ]
-  },
-  "proxy": "http://localhost:4000"
+  }
 }
+
+
+
+
+
+
+
+
+
