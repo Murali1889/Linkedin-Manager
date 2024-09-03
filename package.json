@@ -151,7 +151,7 @@
       ]
     },
     "linux": {
-      "target": "deb"
+      "target": "AppImage"
     },
     "publish": [
       {
