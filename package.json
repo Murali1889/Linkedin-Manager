@@ -158,8 +158,7 @@
         "provider": "github",
         "owner": "Murali1889",
         "repo": "Linkedin-Manager",
-        "releaseType": "release",
-        "overwrite": true
+        "releaseType": "release"
       }
     ]
   }
