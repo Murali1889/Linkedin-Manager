@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-release:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
@@ -23,7 +24,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
-        run: yarn install
+        run: yarn install --production=false
 
       - name: Set up environment variables
         run: |
