@@ -1,10 +1,13 @@
 const { app, BrowserWindow, ipcMain, session, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const { google } = require('googleapis');
+
 const fs = require('fs');
 const path = require('path');
 
-const accountFilePath = path.join(app.getPath('userData'), 'accounts.json');
-const tokensFilePath = path.join(app.getPath('userData'), 'tokens.json');
+const accountFilePath = path.join(app.getPath('userData'), 'sheetAccounts.json');
+const linkedinDataFilePath = path.join(app.getPath('userData'), 'accounts.json');
+
 let mainWindow;
 
 function createWindow() {
@@ -18,7 +21,8 @@ function createWindow() {
       nodeIntegration: false,
       webviewTag: true,
       webSecurity: true,
-      nativeWindowOpen: true
+      nativeWindowOpen: true,
+      partition: 'persist:shared-session'
     },
     fullscreen: true, // Make the window fullscreen
     fullscreenable: true,
@@ -154,49 +158,26 @@ ipcMain.handle('clear-all-accounts', async () => {
 
 ipcMain.handle('logout', async () => {
   try {
-    if (fs.existsSync(tokensFilePath)) {
-      fs.unlinkSync(tokensFilePath);
+
+    // Step 2: Remove the accounts file if it exists
+    if (fs.existsSync(accountFilePath)) {
+      fs.unlinkSync(accountFilePath);
+      console.log('Accounts file removed.');
     }
-    const defaultSession = session.defaultSession;
-    await defaultSession.clearStorageData();
-    await defaultSession.clearCache();
-    mainWindow.webContents.send('logout-callback', {});
+
+    // Step 3: Clear storage data from the shared session partition
+    // const sharedSession = session.fromPartition('persist:shared-session');
+    // await sharedSession.clearStorageData();
+    // await sharedSession.clearCache();
+    console.log('Cleared storage data from the shared session partition.');
+
+    // Optional: Send a callback message to the frontend if necessary
+    // mainWindow.webContents.send('logout-callback', { success: true });
+    console.log('Logout successful.');
+
   } catch (error) {
     console.error('Failed to logout:', error);
-  }
-});
-
-ipcMain.handle('delete-account', async (event, id) => {
-  if (!id) {
-    throw new Error('Invalid account ID');
-  }
-  const accounts = loadAccounts().filter(account => account.id !== id);
-  const account = loadAccounts().find(account => account.id === id);
-  if (account) {
-    const ses = session.fromPartition(account.partition);
-    await ses.clearStorageData();
-  }
-  fs.writeFileSync(accountFilePath, JSON.stringify(accounts));
-  return accounts;
-});
-
-
-ipcMain.handle('clear-app-data', async () => {
-  const userDataPath = app.getPath('userData');
-
-  try {
-    // Clear session storage
-    const defaultSession = session.defaultSession;
-    await defaultSession.clearStorageData();
-    await defaultSession.clearCache();
-
-    // Remove user data directory
-    fs.rmdirSync(userDataPath, { recursive: true });
-
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to clear app data:', error);
-    return { success: false, error: error.message };
+    // mainWindow.webContents.send('logout-callback', { success: false, error: error.message });
   }
 });
 
@@ -209,3 +190,148 @@ function loadAccounts() {
   }
   return [];
 }
+
+
+// Load data from accounts.json
+ipcMain.handle('loadData', async () => {
+  try {
+    if (fs.existsSync(accountFilePath)) {
+      const data = fs.readFileSync(accountFilePath, 'utf-8');
+      return JSON.parse(data);
+    }
+    return { dropdownData: {}, tabs: [] };
+  } catch (error) {
+    console.error('Failed to load data:', error);
+    return { dropdownData: {}, tabs: [] };
+  }
+});
+
+// Save data to accounts.json
+ipcMain.on('saveData', (event, data) => {
+  try {
+    fs.writeFileSync(accountFilePath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Failed to save data:', error);
+  }
+});
+
+
+
+
+async function isGoogleAccountLoggedIn() {
+  try {
+    // Use the session from the shared session partition or default session
+    const googleCookies = await session
+      .fromPartition('persist:shared-session') // Replace with `session.defaultSession` if necessary
+      .cookies.get({ domain: '.google.com' });
+
+    // Check for common Google login cookies
+    console.log(googleCookies)
+    const isLoggedIn = googleCookies.some(
+      (cookie) => cookie.name === 'SID' || cookie.name === 'LSID' || cookie.name === 'SSID'
+    );
+
+    return isLoggedIn;
+  } catch (error) {
+    console.error('Failed to check Google account login status:', error);
+    return false;
+  }
+}
+
+// IPC handler to check if Google account is logged in
+ipcMain.handle('get-google-account', async () => {
+  try {
+    const loggedIn = await isGoogleAccountLoggedIn();
+    return loggedIn; // Returns true if logged in, false otherwise
+  } catch (error) {
+    console.error('Error in get-google-account handler:', error);
+    return false;
+  }
+});
+
+
+
+
+
+// Function to load LinkedIn accounts from LinkedinData.json
+function loadLinkedinAccounts() {
+  if (fs.existsSync(linkedinDataFilePath)) {
+    const data = fs.readFileSync(linkedinDataFilePath, 'utf-8');
+    const accounts = JSON.parse(data);
+    console.log('Loaded LinkedIn Accounts from File:', accounts.map(account => account.id));
+    return accounts;
+  }
+  return [];
+}
+
+// Function to save LinkedIn accounts to LinkedinData.json
+function saveLinkedinAccounts(accounts) {
+  try {
+    fs.writeFileSync(linkedinDataFilePath, JSON.stringify(accounts, null, 2));
+    console.log('LinkedIn Accounts saved successfully.');
+  } catch (error) {
+    console.error('Failed to save LinkedIn accounts:', error);
+  }
+}
+
+// IPC handler to get LinkedIn accounts
+ipcMain.handle('getLinkedinAccounts', async () => {
+  try {
+    const linkedinAccounts = loadLinkedinAccounts();
+    return linkedinAccounts;
+  } catch (error) {
+    console.error('Failed to fetch LinkedIn accounts:', error);
+    return [];
+  }
+});
+
+// IPC handler to save LinkedIn accounts
+ipcMain.handle('saveLinkedinAccounts', async (event, updatedAccounts) => {
+  try {
+    saveLinkedinAccounts(updatedAccounts);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save LinkedIn accounts:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+
+
+// Function to load Google Sheet accounts from accounts.json
+function loadSheetAccounts() {
+  if (fs.existsSync(accountFilePath)) {
+    const data = fs.readFileSync(accountFilePath, 'utf-8');
+    const accounts = JSON.parse(data);
+    console.log('Loaded Google Sheet Accounts from File:', accounts.map(account => account.id));
+    return accounts;
+  }
+  return [];
+}
+
+// IPC handler to get Google Sheet accounts
+ipcMain.handle('getSheetAccounts', async () => {
+  try {
+    const sheetAccounts = loadSheetAccounts();
+    return sheetAccounts;
+  } catch (error) {
+    console.error('Failed to fetch Google Sheet accounts:', error);
+    return [];
+  }
+});
+
+// Example of how you can save the accounts back to the file
+ipcMain.handle('saveSheetsAccounts', async (event, updatedAccounts) => {
+  try {
+    fs.writeFileSync(accountFilePath, JSON.stringify(updatedAccounts, null, 2));
+    console.log('Google Sheet Accounts saved successfully.');
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to save Google Sheet accounts:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+
+
+

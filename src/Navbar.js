@@ -1,6 +1,4 @@
-import React, { useState, useCallback } from "react";
-
-import RoleSelector from "./components/RoleSelector";
+import React, { useContext, useCallback, useState } from "react";
 import {
   Select,
   SelectTrigger,
@@ -11,8 +9,9 @@ import {
 import { Button } from "./components/ui/button"; // Import the custom Button
 import Settings from "./pages/Settings";
 
-const Navbar = ({ setAccounts, setVisibleAccountId, currentViewIndex, accounts }) => {
+const Navbar = ({ setAccounts, setVisibleAccountId, currentViewIndex, accounts, showBrowserViews, setShowBrowserViews }) => {
   const [loading, setLoading] = useState(false);
+  const { tabs, activeTab, addTab, switchTab } = useContext(TabsContext); // Access tabs context
 
   const generateUniqueId = () => {
     return `view-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -34,10 +33,6 @@ const Navbar = ({ setAccounts, setVisibleAccountId, currentViewIndex, accounts }
     setLoading(false);
   }, [accounts, setAccounts, setVisibleAccountId]);
 
-  const switchToAccount = useCallback((id) => {
-    setVisibleAccountId(id);
-  }, [setVisibleAccountId]);
-
   const deleteAccount = useCallback(async (id) => {
     setLoading(true);
     try {
@@ -48,7 +43,6 @@ const Navbar = ({ setAccounts, setVisibleAccountId, currentViewIndex, accounts }
 
       // Switch to the last account if any are left
       if (updatedAccounts.length > 0) {
-        console.log(updatedAccounts[updatedAccounts.length - 1].id)
         setVisibleAccountId(updatedAccounts[updatedAccounts.length - 1].id);
       } else {
         setVisibleAccountId(null);
@@ -59,13 +53,15 @@ const Navbar = ({ setAccounts, setVisibleAccountId, currentViewIndex, accounts }
     setLoading(false);
   }, [accounts, setAccounts, setVisibleAccountId]);
 
-
-  
+  const toggleBrowserViews = () => {
+    setShowBrowserViews(!showBrowserViews);
+  };
 
   return (
     <div style={{ width: "300px", borderRight: "1px solid #ddd", height: "100%", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: '10px' }}>
-        <Select value={(currentViewIndex) || 'no-account'} onValueChange={switchToAccount} id="account-select">
+        {/* Account Selection and Management */}
+        <Select value={currentViewIndex || 'no-account'} onValueChange={switchTab} id="account-select">
           <SelectTrigger>
             <SelectValue placeholder="Select an account" />
           </SelectTrigger>
@@ -85,8 +81,8 @@ const Navbar = ({ setAccounts, setVisibleAccountId, currentViewIndex, accounts }
         </Select>
         <div style={{ marginTop: '10px' }}>
           <Button
-            variant="default" // Use your desired variant
-            size="default" // Use your desired size
+            variant="default"
+            size="default"
             fullWidth
             onClick={addAccount}
             disabled={loading}
@@ -94,9 +90,47 @@ const Navbar = ({ setAccounts, setVisibleAccountId, currentViewIndex, accounts }
             Create Account
           </Button>
         </div>
-        
       </div>
-      <RoleSelector />
+
+      {/* Button to toggle LinkedIn Manager */}
+      <div style={{ padding: '10px' }}>
+        <Button
+          variant="default"
+          size="default"
+          fullWidth
+          onClick={toggleBrowserViews}
+        >
+          LinkedIn Manager
+        </Button>
+      </div>
+
+      {/* Tab Management */}
+      <div className="flex flex-col p-4">
+        <button
+          onClick={addTab}
+          className="bg-blue-500 hover:bg-blue-700 text-black font-bold py-2 px-4 rounded mb-4"
+        >
+          +
+        </button>
+        <ul className="flex flex-col space-y-2">
+          {tabs.map((tab) => (
+            <li
+              key={tab.id}
+              className={`p-2 cursor-pointer rounded ${
+                activeTab === tab.id
+                  ? 'bg-blue-600'
+                  : 'bg-gray-700 hover:bg-gray-600'
+              }`}
+              onClick={() => switchTab(tab.id)}
+            >
+              {tab.title}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* RoleSelector is commented out */}
+      {/* <RoleSelector /> */}
       <Settings setAccounts={setAccounts} accounts={accounts} deleteAccount={deleteAccount} />
     </div>
   );

@@ -1,3 +1,4 @@
+// Settings.js
 import React, { useState } from "react";
 import {
   Sheet,
@@ -19,7 +20,6 @@ import {
   AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
 import { IconButton } from "@mui/material";
-
 import { Button } from "../components/ui/button"; // Using the Button component from ui/button
 import {
   GearIcon,
@@ -27,36 +27,47 @@ import {
   ExclamationTriangleIcon,
   ExitIcon, // Assuming ExitIcon is available; if not, use a suitable icon for logout
 } from "@radix-ui/react-icons"; // Import the settings and delete icons
+import { useAccounts } from "../Linkedin/AccountsProvider"; // Import AccountsContext
 
-const Settings = ({ accounts, setAccounts, setAuthenticated, deleteAccount }) => {
+const Settings = () => {
   const [loading, setLoading] = useState(false);
+  const { accounts: linkedinAccounts, deleteAccount: deleteLinkedinAccount, clearAllAccounts: clearAllLinkedinAccounts } = useAccounts();
 
-  const clearAllAccounts = async () => {
+  const handleClearAllAccounts = async () => {
     setLoading(true);
     try {
-      await window.electron.clearAllAccounts();
-      setAccounts([]);
-      
+      // Clear all accounts for both LinkedIn and Google Sheets
+      await clearAllLinkedinAccounts();
     } catch (error) {
       console.error("Failed to clear all accounts:", error);
     }
     setLoading(false);
   };
 
-  const logout = async () => {
+  const handleLogout = async () => {
     setLoading(true);
     try {
-      await window.electron.logout(); // Implement the logout logic in the Electron main process
-      setAccounts([]);
-      setAuthenticated(false)
+      await window.electron.logout();
     } catch (error) {
       console.error("Failed to logout:", error);
     }
     setLoading(false);
   };
 
+  const handleDeleteAccount = async (id, type) => {
+    setLoading(true);
+    try {
+      if (type === "linkedin") {
+        await deleteLinkedinAccount(id);
+      } 
+    } catch (error) {
+      console.error(`Failed to delete ${type} account:`, error);
+    }
+    setLoading(false);
+  };
+
   return (
-    <div className="m-auto mb-5 w-[80%]">
+    <div className="m-auto mt-5 mb-5 w-[80%]">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" className="flex items-center space-x-2 w-full">
@@ -70,9 +81,9 @@ const Settings = ({ accounts, setAccounts, setAuthenticated, deleteAccount }) =>
             <SheetDescription>Manage your account settings</SheetDescription>
           </SheetHeader>
           <div className="p-4">
-            <h2 className="text-lg font-semibold">Accounts</h2>
+            <h2 className="text-lg font-semibold">LinkedIn Accounts</h2>
             <ul className="mt-2 space-y-2">
-              {accounts.map((account) => (
+              {linkedinAccounts.map((account) => (
                 <li key={account.id} className="w-full">
                   <div className="flex justify-between items-center w-full bg-gray-100 p-2 rounded-md">
                     <span>{account.name}</span>
@@ -86,14 +97,14 @@ const Settings = ({ accounts, setAccounts, setAuthenticated, deleteAccount }) =>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This action cannot be undone. This will permanently
-                            delete your account and remove your data from our
-                            servers.
+                            This action cannot be undone. This will permanently delete your LinkedIn account and remove your data from our servers.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteAccount(account.id)}>Continue</AlertDialogAction>
+                          <AlertDialogAction onClick={() => handleDeleteAccount(account.id, "linkedin")}>
+                            Continue
+                          </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
@@ -101,6 +112,7 @@ const Settings = ({ accounts, setAccounts, setAuthenticated, deleteAccount }) =>
                 </li>
               ))}
             </ul>
+
             <div className="mt-4">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -117,14 +129,12 @@ const Settings = ({ accounts, setAccounts, setAuthenticated, deleteAccount }) =>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone. This will permanently
-                      delete all accounts and remove all data from our
-                      servers.
+                      This action cannot be undone. This will permanently delete all accounts and remove all data from our servers.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={clearAllAccounts}>Continue</AlertDialogAction>
+                    <AlertDialogAction onClick={handleClearAllAccounts}>Continue</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -150,7 +160,7 @@ const Settings = ({ accounts, setAccounts, setAuthenticated, deleteAccount }) =>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={logout}>Logout</AlertDialogAction>
+                    <AlertDialogAction onClick={handleLogout}>Logout</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

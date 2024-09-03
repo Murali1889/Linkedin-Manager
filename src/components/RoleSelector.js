@@ -12,6 +12,8 @@ const RoleSelector = () => {
   console.log(loading)
   const [selectAll, setSelectAll] = useState(false);
 
+  console.log(checkedItems);
+
   const handleToggle = (itemId) => {
     setCheckedItems((prev) =>
       prev.includes(itemId)
@@ -45,7 +47,14 @@ const RoleSelector = () => {
           />
           <label
             htmlFor={nodes.itemId}
-            className="ml-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            className="ml-2 text-sm font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'inline-block',
+              maxWidth: '150px', // Set a max-width based on your layout
+            }}
           >
             {nodes.label}
           </label>
@@ -55,7 +64,7 @@ const RoleSelector = () => {
   );
 
   return (
-    <Box sx={{ minHeight: 352, minWidth: 250 }}>
+    <Box sx={{ minHeight: 352, minWidth: 250, marginTop:"20px" }}>
       {loading ? (
         <Box
           display="flex"
@@ -68,7 +77,7 @@ const RoleSelector = () => {
           <Typography sx={{ marginTop: 2 }}>Roles are loading, please wait a moment...</Typography>
         </Box>
       ) : (
-        <Box sx={{ maxHeight: "450px", overflowY: "auto" }}>
+        <Box sx={{ minHeight: "450px", overflowY: "auto" }}>
           <Box
             display="flex"
             alignItems="center"

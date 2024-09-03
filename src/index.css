@@ -68,6 +68,13 @@
   }
 }
 
+#root{
+  height: 100vh;
+  display: flex;
+  width: 100vw;
+  overflow: hidden;
+}
+
 .ant-space-item{
   width: 100%;
   height: 100%;
@@ -88,4 +95,28 @@
   flex-direction: column !important;
   justify-content: center !important;
   gap: 20px !important;
+}
+
+
+*{
+  font-family: "Poppins", sans-serif;
+}
+
+/* Custom scrollbar for ul-scroll class */
+.ul-scroll {
+  scrollbar-width: none; /* For Firefox */
+  scrollbar-color: blue transparent; /* For Firefox */
+}
+
+.ul-scroll::-webkit-scrollbar {
+  width: 3px; /* Width of the scrollbar */
+}
+
+.ul-scroll::-webkit-scrollbar-thumb {
+  background-color: blue; /* Color of the scrollbar thumb */
+  border-radius: 10px; /* Optional: round the edges of the scrollbar thumb */
+}
+
+.ul-scroll::-webkit-scrollbar-track {
+  background: transparent; /* Color of the scrollbar track */
 }
