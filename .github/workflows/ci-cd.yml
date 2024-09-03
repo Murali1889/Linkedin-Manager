@@ -39,6 +39,7 @@ jobs:
           echo "GH_TOKEN=${{ secrets.GH_TOKEN }}" >> $GITHUB_ENV
 
       - name: Build Electron App
+        shell: bash  # Ensure Bash is used for macOS
         run: |
           if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             yarn electron:build --mac
@@ -55,5 +56,6 @@ jobs:
 
       - name: Publish to GitHub Releases
         if: ${{ matrix.os == 'macos-latest' }}
+        shell: bash  # Ensure Bash is used
         run: |
           DEBUG=electron-builder yarn electron:publish --publish=always
