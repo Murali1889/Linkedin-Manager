@@ -59,12 +59,16 @@ function createWindow() {
       title: 'Update Ready',
       message: 'Update downloaded, application will restart for the update...'
     }).then(() => {
-      autoUpdater.quitAndInstall();
+      setImmediate(() => {
+        autoUpdater.quitAndInstall();
+        
+      });
     });
   });
 
   autoUpdater.on('error', (error) => {
     console.error('Update error:', error);
+    dialog.showErrorBox('Update Error', error == null ? 'unknown' : (error.stack || error).toString());
   });
 }
 
