@@ -122,6 +122,13 @@
             "x64",
             "arm64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ]
     },
@@ -129,6 +136,13 @@
       "target": [
         {
           "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "zip",
           "arch": [
             "x64",
             "ia32"
