@@ -28,7 +28,7 @@ function createWindow() {
     fullscreenable: true,
   });
 
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
   const indexPath = path.join(__dirname, '../build/index.html');
   mainWindow.loadURL(`file://${indexPath}`);
   // mainWindow.loadURL('https://locolhost:3000')
@@ -339,3 +339,16 @@ ipcMain.handle('saveSheetsAccounts', async (event, updatedAccounts) => {
 
 
 
+ipcMain.on('open-profile', (event, { url, id }) => {
+  console.log(`Opening : ${url} and ID: ${id}`);
+  // Send a notification back to the renderer process
+  console.log(url)
+  sendProfileNotification(url, id);
+});
+
+// Function to send a notification to the renderer process
+function sendProfileNotification(url, id) {
+  // This will trigger the 'profile-notification' event in the frontend
+  mainWindow.webContents.send('profile-notification', { url, id });
+
+}

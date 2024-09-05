@@ -21,5 +21,10 @@ contextBridge.exposeInMainWorld('electron', {
   getLinkedinAccounts: () => ipcRenderer.invoke('getLinkedinAccounts'),
   saveLinkedinAccounts: (accounts) => ipcRenderer.invoke('saveLinkedinAccounts', accounts),
   saveSheetsAccounts: (accounts)=> ipcRenderer.invoke('saveSheetsAccounts',accounts),
-  getSheetAccounts: ()=> ipcRenderer.invoke('getSheetAccounts')
+  getSheetAccounts: ()=> ipcRenderer.invoke('getSheetAccounts'),
+  openProfile: (url, id) => ipcRenderer.send('open-profile', {url, id}),
+  onProfileNotification: (callback) => ipcRenderer.on('profile-notification', (event, data) => {
+    console.log('Data received from main:', data); // Debugging line
+    callback(data);
+  }),
 });

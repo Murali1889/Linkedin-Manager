@@ -1,8 +1,5 @@
-export const updateRoles = (selectedProfiles, webviewRefs) => {
+export const updateRoles = (selectedProfiles, view) => {
     const namesList = selectedProfiles;
-  
-    Object.values(webviewRefs.current).forEach((webviews) => {
-      webviews.forEach((view) => {
         if (view) {
           view
             .executeJavaScript(
@@ -69,12 +66,9 @@ export const updateRoles = (selectedProfiles, webviewRefs) => {
               )
             );
         }
-      });
-    });
   };
-  export const updateList = (checkedItems, webviewRefs) => {
-    Object.values(webviewRefs.current).forEach((webviews) => {
-      webviews.forEach((view) => {
+  export const updateList = (checkedItems, view) => {
+
         if (view) {
           view
             .executeJavaScript(
@@ -113,8 +107,6 @@ export const updateRoles = (selectedProfiles, webviewRefs) => {
               )
             );
         }
-      });
-    });
   };
   export const injectCustomJS = (view, id) => {
     const jsCode = `
@@ -380,7 +372,6 @@ export const updateRoles = (selectedProfiles, webviewRefs) => {
       })
       .catch((err) => console.error(`Failed to inject custom JS into WebView ${id}:`, err));
   };
-
 export const injectTryGetAccountName = (view, id, changeName) => {
     const jsCode = `
       (function() {
@@ -398,52 +389,20 @@ export const injectTryGetAccountName = (view, id, changeName) => {
   
         function customizeLinkedIn() {
           try {
-            // Apply UI changes for LinkedIn customization
-            const existingDiv = document.querySelector('.scaffold-layout__main');
-            if (existingDiv) {
-              existingDiv.style.height = '100vh';
-              existingDiv.style.width = '100vw';
-              existingDiv.style.overflow = 'hidden';
-            }
-  
-            const innerDiv = document.getElementById('global-nav');
-            if (innerDiv) {
-              innerDiv.style.display = 'none';
-            }
-  
-            const authOutlet = document.querySelector('.authentication-outlet');
-            if (authOutlet) {
-              authOutlet.style.margin = '0';
-              authOutlet.style.padding = '0';
-              authOutlet.style.overflow = 'hidden';
-              
-            }
-  
-            const messagingElement = document.querySelector('.scaffold-layout__content--list-detail-aside');
-            if (messagingElement) {
-              messagingElement.style.margin = '0';
-              messagingElement.style.padding = '0';
-            }
-  
-            const element1 = document.getElementById("messaging");
+            const element1 = document.getElementById("main");
             if (element1) {
               element1.style.height = '100%';
               element1.style.width = '100%';
-              element1.style.flexDirection = 'row';
+              element1.style.position = 'fixed';
               element1.style.margin = '0';
+              element1.style.zIndex = '9999999999';
+              element1.style.inset = '0';
+              element1.style.background = 'white';
             }
-  
-            const element2 = document.querySelector('.scaffold-layout__aside');
-            if (element2) {
-              element2.style.display = 'none';
+            const element3 = document.querySelector('.app-loader--default');
+            if(element3){
+              element3.style.overflow = 'hidden';
             }
-  
-            const element3 = document.getElementById('main');
-            if (element3) {
-              element3.style.margin = '0';
-              element3.style.padding = '0';
-            }
-  
             const mainElement = document.querySelector('.msg-overlay-list-bubble');
             if (mainElement) {
               mainElement.style.display = 'none';
@@ -546,6 +505,337 @@ export const injectTryGetAccountName = (view, id, changeName) => {
       })
       .then((name) => {
         changeName({ id: id, newName: name });
+        console.log(`Account name for id ${id}: ${name}`);
+      })
+      .catch(error => {
+        console.error(`Failed to get account name for id ${id}: `, error);
+      });
+  };
+  export const injectShortcutHandler = (view) => {
+        if (view) {
+          view
+            .executeJavaScript(
+              `
+              (function() {
+                console.log('Shortcut handler script loaded.');
+  
+                // Define shortcut commands and their corresponding text
+                const shortcuts = {
+                  "/intro": "Hello, <<name>>! This is an introduction message.",
+                  "/dequed": "Your request has been dequeued, <<name>>.",
+                  "/confirm": "Thank you for confirming, <<name>>.",
+                  "/thanks": "Thanks a lot, <<name>>!",
+                  "/feedback": "We appreciate your feedback, <<name>>."
+                };
+  
+                // Function to replace placeholder with actual name
+                function replaceName(text, name) {
+                  console.log('Replacing name in text:', text);
+                  return text.replace(/<<name>>/g, name);
+                }
+  
+                // Function to fetch the name from the page
+                function getName() {
+                  const nameElement = document.querySelector('h2.msg-entity-lockup__entity-title');
+                  const name = nameElement ? nameElement.textContent.trim() : "there";
+                  console.log('Fetched name:', name);
+                  return name;
+                }
+  
+                // Function to show the shortcut list
+                function showShortcutList(filteredCommands) {
+                  console.log('Showing shortcut list with commands:', filteredCommands);
+                  let existingList = document.getElementById('shortcut-list');
+                  if (existingList) existingList.remove(); // Remove existing list if already present
+  
+                  const list = document.createElement('ul');
+                  list.id = 'shortcut-list';
+                  list.style.position = 'absolute';
+                  list.style.backgroundColor = '#ffffff';
+                  list.style.padding = '10px 0';
+                  list.style.listStyle = 'none';
+                  list.style.zIndex = '9999';
+                  list.style.borderRadius = '20px';
+                  list.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.15)';
+                  list.style.maxHeight = '150px';
+                  list.style.overflowY = 'auto';
+                  list.style.width = '360px';
+                  list.style.overflow = 'hidden';
+                  list.style.margin = '0 auto';
+  
+                  filteredCommands.forEach((shortcut, index) => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = shortcut;
+                    listItem.style.padding = '8px 10px';
+                    listItem.style.cursor = 'pointer';
+                    listItem.style.borderRadius = '15px';
+                    listItem.style.transition = 'background-color 0.2s ease';
+                    listItem.setAttribute('role', 'button'); // Accessibility feature
+  
+                    // Highlight the selected item on focus
+                    listItem.addEventListener('mouseenter', () => {
+                      listItem.style.backgroundColor = '#e0e7ff';
+                    });
+  
+                    listItem.addEventListener('mouseleave', () => {
+                      listItem.style.backgroundColor = 'transparent';
+                    });
+  
+                    listItem.addEventListener('click', () => {
+                      const name = getName();
+                      const messageBox = document.querySelector('.msg-form__contenteditable p');
+                      if (messageBox) {
+                        messageBox.textContent = replaceName(shortcuts[shortcut], name);
+                        console.log('Inserted shortcut text:', shortcuts[shortcut]);
+                        // Trigger input events for LinkedIn
+                        ['input', 'keyup', 'keydown'].forEach(eventType => {
+                          const event = new Event(eventType, { bubbles: true });
+                          messageBox.dispatchEvent(event);
+                        });
+                      }
+                      list.remove(); // Remove the list after selection
+                      console.log('Shortcut list removed after selection.');
+                    });
+  
+                    list.appendChild(listItem);
+                  });
+  
+                  document.body.appendChild(list);
+                  const messageBox = document.querySelector('.msg-form__contenteditable');
+                  const rect = messageBox.getBoundingClientRect();
+                  list.style.top = (rect.top - list.offsetHeight - 5) + 'px'; 
+                  list.style.left = (rect.left + (rect.width / 2) - (list.offsetWidth / 2)) + 'px';
+                  console.log('Shortcut list added to the DOM.');
+                }
+  
+                // Function to filter commands based on input
+                function filterCommands(input) {
+                  const filtered = Object.keys(shortcuts).filter(command => command.startsWith(input));
+                  console.log('Filtered commands:', filtered);
+                  return filtered;
+                }
+  
+                // Function to handle input changes and check for shortcuts
+                function handleInputChanges(mutations) {
+                  mutations.forEach((mutation) => {
+                    if (mutation.type === 'characterData') {
+                      const inputText = mutation.target.textContent.trim();
+                      console.log('Current input text:', inputText);
+                      if (inputText.startsWith('/')) {
+                        const filteredCommands = filterCommands(inputText);
+                        if (filteredCommands.length > 0) {
+                          showShortcutList(filteredCommands);
+                        }
+                      } else {
+                        const existingList = document.getElementById('shortcut-list');
+                        if (existingList) {
+                          existingList.remove();
+                          console.log('Removed shortcut list as input no longer starts with "/".');
+                        }
+                      }
+                    }
+                  });
+                }
+  
+                // Observe the <p> tag inside the message box for changes
+                function addObserver() {
+                  const pTag = document.querySelector('.msg-form__contenteditable p');
+                  if (pTag) {
+                    const observer = new MutationObserver(handleInputChanges);
+                    observer.observe(pTag, { characterData: true, subtree: true });
+                    console.log('Observer added to <p> tag inside message box.');
+                    clearInterval(checkInterval); // Stop checking once the <p> tag is found
+                  } else {
+                    console.log('Message box <p> tag not found yet, continuing to check...');
+                  }
+                }
+  
+                // Check for the <p> tag every 500ms until found
+                const checkInterval = setInterval(addObserver, 500);
+  
+                // Function to re-add the observer when necessary
+                function reAddObserver() {
+                  clearInterval(checkInterval);
+                  addObserver();
+                }
+  
+                // Hide the list when clicking outside
+                document.addEventListener('click', (event) => {
+                  const list = document.getElementById('shortcut-list');
+                  if (list && !list.contains(event.target)) {
+                    list.remove();
+                    console.log('Shortcut list removed on outside click.');
+                    reAddObserver();
+                  }
+                });
+  
+                // Prevent showing the list multiple times
+                document.addEventListener('keydown', (event) => {
+                  if (event.key === 'Escape') {
+                    const list = document.getElementById('shortcut-list');
+                    if (list) {
+                      list.remove();
+                      console.log('Shortcut list removed on Escape key press.');
+                      reAddObserver();
+                    }
+                  }
+                });
+  
+                // Ensure observer stays active and correctly handles inputs
+                document.addEventListener('input', () => {
+                  reAddObserver();
+                });
+  
+              })();
+              `
+            )
+            .then(() =>
+              console.log(`Shortcut handler injected into WebView ${view.getAttribute("data-id")}`)
+            )
+            .catch((err) =>
+              console.error(
+                `Failed to inject shortcut handler for WebView ${view.getAttribute("data-id")}:`,
+                err
+              )
+            );
+        }
+  };
+
+
+
+  export const goToProfile = (view, accountId) => {
+    const jsCode = `
+      (function() {
+        // Function to add the "Go to Profile" button
+        function addGoToProfileButton() {
+          // Select the profile link on the page
+          const profileLink = document.querySelector('.msg-thread__link-to-profile');
+  
+          if (profileLink) {
+            // Check if the button already exists to avoid duplicates
+            if (profileLink.nextElementSibling && profileLink.nextElementSibling.classList.contains('go-to-profile-button')) {
+              return;
+            }
+  
+            // Create the button element
+            const goToProfileButton = document.createElement('button');
+            goToProfileButton.textContent = 'Go to Profile';
+            goToProfileButton.className = 'go-to-profile-button';
+            goToProfileButton.style.marginLeft = '10px';
+            goToProfileButton.style.padding = '5px 10px';
+            goToProfileButton.style.borderRadius = '20px';
+            goToProfileButton.style.border = 'none';
+            goToProfileButton.style.backgroundColor = '#0073b1';
+            goToProfileButton.style.color = 'white';
+            goToProfileButton.style.cursor = 'pointer';
+            goToProfileButton.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)'; // Adds floating visualization
+  
+            // Add click event listener to the button
+            goToProfileButton.addEventListener('click', () => {
+              // Fetch the current href dynamically when clicked
+              const updatedProfileLink = document.querySelector('.msg-thread__link-to-profile');
+              if (updatedProfileLink) {
+                const updatedProfileUrl = updatedProfileLink.getAttribute('href');
+                console.log('Current Profile URL:', updatedProfileUrl);
+                window.electron.openProfile(updatedProfileUrl, '${accountId}');
+              } else {
+                console.log('Profile link not found.');
+              }
+            });
+  
+            // Insert the button after the profile link
+            profileLink.parentNode.insertBefore(goToProfileButton, profileLink.nextSibling);
+          }
+        }
+  
+        // Initial call to add the button
+        addGoToProfileButton();
+  
+        // Set up a MutationObserver to monitor changes in the profile link and its attributes
+        const observer = new MutationObserver(mutations => {
+          mutations.forEach(mutation => {
+            // Re-add the button when necessary
+            addGoToProfileButton();
+          });
+        });
+  
+        // Observe changes in the entire document to cover all scenarios
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true, // Watch for changes in attributes like href
+          attributeFilter: ['href'], // Specifically watch for href changes
+        });
+      })();
+    `;
+  
+    // Execute the JavaScript in the webview
+    view
+      .executeJavaScript(jsCode)
+      .then(() => {
+        console.log(`Custom JS injected into WebView ${accountId}`);
+      })
+      .catch((err) =>
+        console.error(`Failed to inject custom JS into WebView ${accountId}:`, err)
+      );
+  };
+
+
+
+export const injectProfileView = (view, id) => {
+    const jsCode = `
+      (function() {
+        function customizeLinkedIn() {
+          try {
+            const element1 = document.querySelector("main.scaffold-layout__main");
+            if (element1) {
+              element1.style.height = '100%';
+              element1.style.width = '100%';
+              element1.style.position = 'fixed';
+              element1.style.margin = '10px';
+              element1.style.zIndex = '9999999999';
+              element1.style.inset = '0';
+              element1.style.background = 'white';
+              element1.style.overflowY = 'scroll';
+              element1.style.overflowX = 'hidden';
+            }
+
+            const element3 = document.querySelector('.app-loader--default');
+            if(element3){
+              element3.style.overflow = 'hidden';
+            }
+
+            const element2 = document.getElementById("global-nav");
+            if(element2){
+              element2.style.display = 'none';
+            }
+            const mainElement = document.querySelector('.msg-overlay-list-bubble');
+            if (mainElement) {
+              mainElement.style.display = 'none';
+            }
+          } catch (error) {
+            console.log('Error customizing LinkedIn: ' + error.message);
+          }
+        }
+  
+        function setupContinuousCustomization() {
+          const observer = new MutationObserver(() => {
+            customizeLinkedIn();
+          });
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            characterData: true,
+          });
+          customizeLinkedIn();
+        }
+        setupContinuousCustomization(); // Start observing and customizing continuously
+      })();
+    `;
+  
+    view.executeJavaScript(jsCode)
+      .then((name) => {
         console.log(`Account name for id ${id}: ${name}`);
       })
       .catch(error => {
