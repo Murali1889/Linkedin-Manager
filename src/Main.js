@@ -4,11 +4,9 @@ import { NavbarProvider, NavbarContext } from './Navbar/NavProvider';
 import Navbar from './Navbar/Index'; // Your Navbar Component
 import LinkedinManager from './Linkedin/LinkedinWebviews'; // Import your components
 import GoogleSheets from './Sheets/GoogleSheets';
-
+import AddLabel from './Labels/AddLabel';
 const AppContent = () => {
   const { activeTab } = useContext(NavbarContext);
-
-  // Extract the header and item from activeTab
   const { header, item } = activeTab || {};
 
   return (
@@ -29,6 +27,7 @@ const Main = () => {
     <NavbarProvider>
       <Navbar /> 
       <AppContent />
+      <AddLabel/>
     </NavbarProvider>
   );
 };

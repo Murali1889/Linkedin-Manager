@@ -74,6 +74,12 @@ function createWindow() {
 
 app.on('ready', () => {
   createWindow();
+  session.defaultSession.cookies.get({ url: 'https://accounts.google.com' })
+  .then((cookies) => {
+    console.log(cookies);
+  }).catch((error) => {
+    console.error(error);
+  });
 });
 
 app.on('window-all-closed', function () {
@@ -346,9 +352,14 @@ ipcMain.on('open-profile', (event, { url, id }) => {
   sendProfileNotification(url, id);
 });
 
-// Function to send a notification to the renderer process
+
 function sendProfileNotification(url, id) {
-  // This will trigger the 'profile-notification' event in the frontend
   mainWindow.webContents.send('profile-notification', { url, id });
 
 }
+
+
+ipcMain.on('add-label',(event, {code, id})=>{
+  console.log(`the code for the account id is ${code} and id ${id}`);
+  mainWindow.webContents.send('open-label', {code, id});
+})

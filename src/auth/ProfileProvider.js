@@ -25,7 +25,6 @@ export const ProfileProvider = ({ children }) => {
 
         // Automatically select all roles when data is loaded
         const allRoles = Object.keys(data);
-        setCheckedItems(allRoles);
 
         // Set the initial selected profiles based on all roles
         const selectedNames = [];
