@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, session, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
-const { google } = require('googleapis');
+
 
 const fs = require('fs');
 const path = require('path');
@@ -359,7 +359,7 @@ function sendProfileNotification(url, id) {
 }
 
 
-ipcMain.on('add-label',(event, {code, id})=>{
+ipcMain.on('add-label',(event, {code, id, name})=>{
   console.log(`the code for the account id is ${code} and id ${id}`);
-  mainWindow.webContents.send('open-label', {code, id});
+  mainWindow.webContents.send('open-label', {code, id, name});
 })

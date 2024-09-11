@@ -420,8 +420,6 @@ export const injectCustomJS = (view, id) => {
     );
 };
 
-
-
 export const injectTryGetAccountName = (view, id, changeName) => {
   const jsCode = `
       (function() {
@@ -914,158 +912,50 @@ export const injectProfileView = (view, id) => {
     });
 };
 
-
 export const addLabel = (view, accountId) => {
   const jsCode = `
     (function() {
-      // Function to initialize the IndexedDB and set up the labels store
-      function initIndexedDB() {
-        console.log('Initializing IndexedDB...');
-        const dbName = 'labelsDB';
-        const storeName = 'labels';
-        const openRequest = indexedDB.open(dbName, 1);
-
-        openRequest.onupgradeneeded = function(event) {
-          console.log('Upgrading IndexedDB...');
-          const db = event.target.result;
-          if (!db.objectStoreNames.contains(storeName)) {
-            db.createObjectStore(storeName, { keyPath: 'id' });
-            console.log('Created object store:', storeName);
-          }
-        };
-
-        openRequest.onsuccess = function() {
-          console.log('IndexedDB initialized successfully.');
-        };
-
-        openRequest.onerror = function(error) {
-          console.error('Error initializing IndexedDB:', error);
-        };
-      }
-
-      // Function to extract the profile code from the URL
-      function getProfileCode(url) {
-        console.log('Extracting profile code from URL:', url);
-        const regex = /\\/in\\/([\\w-]+)/;
-        const match = url.match(regex);
-        const code = match ? match[1] : null;
-        console.log('Extracted code:', code);
-        return code;
-      }
-
-      // Function to add a label to the li element
-      function addLabelToElement(li, code) {
-        console.log('Adding label to element for code:', code);
-        const labelTagId = \`label-tag-\${code}\`;
-        // Check if the label already exists to avoid duplicates
-        let existingLabel = li.querySelector(\`#\${CSS.escape(labelTagId)}\`);
-        if (!existingLabel) {
-          console.log('Label not found. Fetching label data from IndexedDB...');
-          // Fetch label details from IndexedDB
-          const openRequest = indexedDB.open('labelsDB', 1);
-          openRequest.onsuccess = function(event) {
-            const db = event.target.result;
-            const transaction = db.transaction('labels', 'readonly');
-            const store = transaction.objectStore('labels');
-            const getRequest = store.get(code);
-
-            getRequest.onsuccess = function(event) {
-              const labelData = event.target.result;
-              if (labelData) {
-                console.log('Label data found:', labelData);
-                // Create a label element
-                const labelTag = document.createElement('span');
-                labelTag.id = labelTagId;
-                labelTag.textContent = labelData.label;
-                labelTag.style.backgroundColor = labelData.color;
-                labelTag.style.padding = '3px 5px';
-                labelTag.style.borderRadius = '5px';
-                labelTag.style.marginLeft = '5px';
-                labelTag.style.color = '#fff';
-
-                // Append the label to the li element
-                li.appendChild(labelTag);
-                console.log('Label added to element:', labelTag);
-              } else {
-                console.log('No label found for code:', code);
-              }
-            };
-
-            getRequest.onerror = function(error) {
-              console.error('Failed to retrieve label from IndexedDB:', error);
-            };
-          };
-
-          openRequest.onerror = function(error) {
-            console.error('Failed to open IndexedDB:', error);
-          };
-        } else {
-          console.log('Label already exists:', existingLabel);
-        }
-      }
-
       // Function to handle keydown events
       function handleKeyDown(event) {
         console.log('Keydown event detected:', event.key);
         // Check for Cmd+L (Mac) or Ctrl+L (Windows/Linux)
         if ((event.metaKey || event.ctrlKey) && event.key === 'l') {
           event.preventDefault(); // Prevent default browser action
-          console.log('Cmd+L or Ctrl+L pressed. Searching for profile link...');
-          const profileLink = document.querySelector('.msg-thread__link-to-profile');
-          if (profileLink) {
-            const profileUrl = profileLink.href;
-            console.log('Profile link found:', profileUrl);
-            const code = getProfileCode(profileUrl);
-            if (code) {
-              console.log('Detected profile code:', code);
-              window.electron.addLabel(code,'${accountId}'); // Send the code to the main process
-              // Find the parent li element and add the label
-              const liElement = profileLink.closest('li');
-              if (liElement) {
-                console.log('Parent li element found. Adding label...');
-                addLabelToElement(liElement, code);
-              } else {
-                console.log('Parent li element not found.');
-              }
-            } else {
-              console.log('Profile code not found in URL:', profileUrl);
-            }
-          } else {
-            console.log('Profile link not found.');
-          }
+          console.log('Cmd+L or Ctrl+L pressed. Searching for active conversation...');
+          checkActiveConversation();
         }
       }
 
-      // Set up a MutationObserver to monitor the document for relevant profile links
-      function setupObserver() {
-        console.log('Setting up MutationObserver...');
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach(mutation => {
-            if (mutation.addedNodes.length > 0) {
-              mutation.addedNodes.forEach(node => {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                  const profileLink = node.querySelector('.msg-thread__link-to-profile');
-                  if (profileLink) {
-                    console.log('Profile link detected. Setting up label addition.');
-                  }
-                }
-              });
-            }
-          });
-        });
+      // Function to check for the active conversation and extract the image element and name
+      function checkActiveConversation() {
+        // Find the active conversation list item
+        const activeLi = document.querySelector('.msg-conversations-container__convo-item-link--active');
+        if (activeLi) {
+          console.log('Active conversation detected:', activeLi);
+          const nameTag = activeLi.querySelector('h3.msg-conversation-listitem__participant-names span.truncate');
+          console.log(nameTag)
+          if (nameTag) {
+            const imgElement = activeLi.querySelector('img.presence-entity__image');
+            const imgSrc = imgElement ? imgElement.src : null;
 
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true,
-        });
+            const name = nameTag ? nameTag.textContent.trim() : null;
+
+            // Send the data to the main process via Electron
+            if (imgSrc && name) {
+              window.electron.addLabel(imgSrc, '${accountId}', name);
+            } else {
+              console.log('Name or image source not found.');
+            }
+          } else {
+            console.log('Anchor element not found in active conversation.');
+          }
+        } else {
+          console.log('No active conversation detected.');
+        }
       }
 
-      // Initialize the IndexedDB and event listeners
+      // Initialize the script and attach the event listeners
       console.log('Initializing script...');
-      initIndexedDB();
-      setupObserver();
-
-      // Attach the keydown event listener to the document
       console.log('Attaching keydown event listener...');
       document.addEventListener('keydown', handleKeyDown);
     })();
@@ -1075,9 +965,535 @@ export const addLabel = (view, accountId) => {
   view
     .executeJavaScript(jsCode)
     .then(() => {
-      console.log('Custom JS injected successfully.');
+      console.log("Custom JS injected successfully.");
     })
-    .catch(err => {
-      console.error('Failed to inject custom JS:', err);
+    .catch((err) => {
+      console.error("Failed to inject custom JS:", err);
     });
 };
+
+export const updateLabels = (labels, view) => {
+  if (view) {
+    view
+      .executeJavaScript(
+        `
+        (function() {
+          try {
+            const dbName = 'LabelsDB';
+            const storeName = 'codesStore';
+
+            // Open IndexedDB database
+            const request = indexedDB.open(dbName, 1);
+
+            request.onupgradeneeded = (event) => {
+              const db = event.target.result;
+              if (!db.objectStoreNames.contains(storeName)) {
+                db.createObjectStore(storeName, { keyPath: 'code' }); // Use 'code' as the key path
+                console.log('Created object store:', storeName);
+              }
+            };
+
+            request.onsuccess = (event) => {
+              const db = event.target.result;
+              const transaction = db.transaction(storeName, 'readwrite');
+              const store = transaction.objectStore(storeName);
+
+              // Clear existing store
+              store.clear().onsuccess = () => {
+                // Convert labels to an array of individual code entries
+                const codesArray = ${JSON.stringify(labels)}
+                  .map(label => ({
+                    code: label.code, // Unique key for the object store
+                    codeName: label.codeName,
+                    labels: Array.isArray(label.labels) ? label.labels : [] // Ensure labels are stored as an array of objects with name and color
+                  }));
+
+                console.log('Labels received:', ${JSON.stringify(labels)});
+                console.log('Formatted codes array:', codesArray);
+
+                // Add each code entry to the store
+                codesArray.forEach(item => {
+                  const putRequest = store.put(item);
+
+                  putRequest.onsuccess = () => {
+                    console.log('Code stored successfully:', item);
+                  };
+
+                  putRequest.onerror = (error) => {
+                    console.error('Error storing code:', error);
+                  };
+                });
+              };
+
+              transaction.oncomplete = () => {
+                console.log('IndexedDB updated with labels in WebView');
+              };
+
+              transaction.onerror = (error) => {
+                console.error('Failed to update IndexedDB in WebView:', error);
+              };
+            };
+
+            request.onerror = (error) => {
+              console.error('Failed to open IndexedDB in WebView:', error);
+            };
+          } catch (error) {
+            console.error('Error updating labels:', error);
+          }
+        })();
+        `
+      )
+      .then(() =>
+        console.log(
+          `Updated labels in IndexedDB for WebView ${view.getAttribute(
+            "data-id"
+          )}`
+        )
+      )
+      .catch((err) =>
+        console.error(
+          `Failed to update labels for WebView ${view.getAttribute(
+            "data-id"
+          )}:`,
+          err
+        )
+      );
+  }
+};
+
+
+export const updateLabelTags = (view) => {
+  if (view) {
+    view
+      .executeJavaScript(
+        `
+        (function() {
+          const dbName = 'LabelsDB';
+          const storeName = 'codesStore';
+
+          // Initialize the IndexedDB
+          function initIndexedDB() {
+            console.log('Initializing IndexedDB...');
+            const request = indexedDB.open(dbName, 1);
+
+            request.onupgradeneeded = (event) => {
+              const db = event.target.result;
+              if (!db.objectStoreNames.contains(storeName)) {
+                db.createObjectStore(storeName, { keyPath: 'code' });
+                console.log('Created object store:', storeName);
+              }
+            };
+
+            request.onsuccess = (event) => {
+              const db = event.target.result;
+              console.log('IndexedDB initialized successfully.');
+              observeListChanges(db); // Start observing changes in the <ul> element
+            };
+
+            request.onerror = (error) => {
+              console.error('Failed to open IndexedDB:', error);
+            };
+          }
+
+          // Observe changes in the <ul> element
+          function observeListChanges(db) {
+            console.log('Observing changes in the <ul> element...');
+            const ulElement = document.querySelector('ul.msg-conversations-container__conversations-list');
+
+            if (!ulElement) {
+              console.log('No <ul> element found. Retrying...');
+              setTimeout(() => observeListChanges(db), 1000);
+              return;
+            }
+
+            const observer = new MutationObserver(() => {
+              console.log('<ul> element changed. Updating <li> elements...');
+              updateLiElements(db);
+            });
+
+            observer.observe(ulElement, { childList: true, subtree: true });
+            console.log('Started observing <ul> element changes.');
+            updateLiElements(db); // Initial check for existing <li> elements
+          }
+
+          // Update <li> elements with labels from the IndexedDB
+          function updateLiElements(db) {
+            console.log('Updating <li> elements with labels...');
+            const liElements = document.querySelectorAll('ul.msg-conversations-container__conversations-list > li');
+
+            liElements.forEach(li => {
+              const anchorElement = li.querySelector('a.msg-conversation-listitem__link');
+              const imgElement = anchorElement ? anchorElement.querySelector('img.presence-entity__image') : null;
+              const imgSrc = imgElement ? imgElement.src : null;
+              const nameTag = li.querySelector('h3.msg-conversation-listitem__participant-names span.truncate');
+              
+              if (imgSrc && nameTag) {
+                const nameContent = nameTag.textContent.trim();
+                console.log('Found <img> element with src:', imgSrc);
+
+                // Fetch label data from IndexedDB based on the code
+                const transaction = db.transaction(storeName, 'readonly');
+                const store = transaction.objectStore(storeName);
+                const getRequest = store.get(imgSrc); // Check directly with imgSrc as the key
+
+                getRequest.onsuccess = (event) => {
+                  const labelData = event.target.result;
+                  console.log('Fetched label data from IndexedDB:', labelData);
+
+                  // Compare the img src and the code in the database
+                  if (labelData && labelData.code === imgSrc && nameContent === labelData.codeName) {
+                    console.log('Matching code found. Adding labels to <li>...');
+                    addLabelsToContent(li, labelData); // Add the labels to the content div
+                  } else {
+                    console.log('No matching code found for img src:', imgSrc);
+                  }
+                };
+
+                getRequest.onerror = (error) => {
+                  console.error('Failed to retrieve label from IndexedDB:', error);
+                };
+              } else {
+                console.log('No <img> element found within <li>.');
+              }
+            });
+          }
+
+          // Add multiple labels to the content div within the <li> element
+          function addLabelsToContent(li, labelData) {
+            console.log('Adding labels to content div:', labelData);
+
+            const parentDiv = li.querySelector('.msg-conversation-card__content--selectable');
+            if (!parentDiv) {
+              console.log('Content div not found in <li>.');
+              return;
+            }
+
+            // Check if the tag container with the same ID already exists
+            const roleTagContainerId = \`label-tag-\${labelData.code}\`;
+            let roleTagContainer = parentDiv.querySelector(\`#\${CSS.escape(roleTagContainerId)}\`);
+            if (!roleTagContainer) {
+              // Create a container for the role tags if not already present
+              roleTagContainer = document.createElement('div');
+              roleTagContainer.id = roleTagContainerId;
+              roleTagContainer.style.display = 'flex';
+              roleTagContainer.style.alignItems = 'center';
+              roleTagContainer.style.gap = '5px'; // Set the gap between tags
+              roleTagContainer.classList.add('role-tag-container');
+              parentDiv.insertAdjacentElement('afterbegin', roleTagContainer);
+              parentDiv.style.height = '130px'; // Adjust the height
+            }
+
+            // Iterate over the labels array and add each as a separate tag
+            labelData.labels.forEach(label => {
+              // Check if a tag with the same name already exists in the container
+              const existingTag = Array.from(roleTagContainer.children).some(tag => tag.textContent.includes(label.name));
+              if (existingTag) {
+                console.log('Label tag already exists:', label.name);
+                return;
+              }
+
+              // Create the label tag container
+              const roleSpanContainer = document.createElement('div');
+              roleSpanContainer.style.display = 'flex';
+              roleSpanContainer.style.alignItems = 'center';
+              roleSpanContainer.style.padding = '5px 10px';
+              roleSpanContainer.style.borderRadius = '5px';
+              roleSpanContainer.style.backgroundColor = label.color;
+              roleSpanContainer.style.color = '#fff';
+              roleSpanContainer.style.fontSize = '12px';
+              roleSpanContainer.style.marginRight = '5px';
+              roleSpanContainer.classList.add('label-tag');
+              roleSpanContainer.style.position = 'relative'; // To position the close button
+
+              // Create the label text
+              const roleSpan = document.createElement('span');
+              roleSpan.textContent = label.name;
+              roleSpan.style.marginRight = '8px';
+
+              // Create the close button with SVG
+              const closeButton = document.createElement('button');
+              closeButton.style.background = 'none';
+              closeButton.style.border = 'none';
+              closeButton.style.cursor = 'pointer';
+              closeButton.style.padding = '0';
+              closeButton.style.marginLeft = '5px';
+              closeButton.style.display = 'none'; // Initially hidden
+              closeButton.style.position = 'absolute';
+              closeButton.style.right = '5px';
+              closeButton.style.top = '50%';
+              closeButton.style.transform = 'translateY(-50%)';
+              closeButton.style.transition = 'opacity 0.3s ease'; // Smooth transition
+
+              // Add the SVG to the button
+              const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+              svgElement.setAttribute("width", "7");
+              svgElement.setAttribute("height", "7");
+              svgElement.setAttribute("viewBox", "0 0 7 7");
+              svgElement.setAttribute("fill", "none");
+
+              const pathElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+              pathElement.setAttribute("d", "M6.81862 5.96446C7.06046 6.20653 7.06046 6.58309 6.81862 6.82517C6.6977 6.94621 6.5499 7 6.38868 7C6.22745 7 6.07965 6.94621 5.95873 6.82517L3.5 4.36407L1.04127 6.82517C0.920346 6.94621 0.772553 7 0.611324 7C0.450096 7 0.302303 6.94621 0.181382 6.82517C-0.0604607 6.58309 -0.0604607 6.20653 0.181382 5.96446L2.64012 3.50336L0.181382 1.04227C-0.0604607 0.800192 -0.0604607 0.423631 0.181382 0.181556C0.423225 -0.0605187 0.799424 -0.0605187 1.04127 0.181556L3.5 2.64265L5.95873 0.181556C6.20058 -0.0605187 6.57677 -0.0605187 6.81862 0.181556C7.06046 0.423631 7.06046 0.800192 6.81862 1.04227L4.35988 3.50336L6.81862 5.96446Z");
+              pathElement.setAttribute("fill", "white");
+
+              svgElement.appendChild(pathElement);
+              closeButton.appendChild(svgElement);
+
+              // Close button click event
+              closeButton.onclick = () => {
+                console.log('Label removed:', label.name);
+                roleSpanContainer.remove(); // Remove the label from the DOM
+                window.electron.removeLabel(label.name, labelData.code, labelData.codeName); // Call the Electron function
+              };
+
+              // Append elements
+              roleSpanContainer.appendChild(roleSpan);
+              roleSpanContainer.appendChild(closeButton);
+              roleTagContainer.appendChild(roleSpanContainer);
+
+              // Show the close button on hover
+              roleSpanContainer.onmouseenter = () => {
+                closeButton.style.display = 'flex'; // Show the button
+              };
+              roleSpanContainer.onmouseleave = () => {
+                closeButton.style.display = 'none'; // Hide the button
+              };
+            });
+          }
+
+          // Initialize the IndexedDB and set up observers
+          initIndexedDB();
+        })();
+        `
+      )
+      .then(() =>
+        console.log(
+          `Started monitoring and updating labels in WebView ${view.getAttribute(
+            "data-id"
+          )}`
+        )
+      )
+      .catch((err) =>
+        console.error(
+          `Failed to update labels for WebView ${view.getAttribute(
+            "data-id"
+          )}:`,
+          err
+        )
+      );
+  }
+};
+
+
+
+
+
+
+
+export const handleDropdownClick = (view) => {
+  const jsCode = `
+    (function() {
+      // Function to set opacity and trigger click on the button
+      function triggerDropdownActions() {
+        // Find the parent dropdown container
+        const dropdownContainer = document.querySelector('.artdeco-dropdown.msg-thread-actions__dropdown');
+        console.log(dropdownContainer)
+
+        if (dropdownContainer) {
+          // Find the button within the dropdown container
+          const button = dropdownContainer.querySelector('.msg-thread-actions__control');
+
+          // Find the specific dropdown content inside the container
+          const dropdownContent = dropdownContainer.querySelector('.msg-thread-actions__dropdown-options.artdeco-dropdown__content');
+
+          if (dropdownContent) {
+            // Set the opacity of the dropdown content to 0
+            dropdownContent.style.opacity = '0';
+            console.log('Dropdown content opacity set to 0.');
+
+            // Trigger a click on the button
+            if (button) {
+              button.click();
+              console.log('Dropdown button clicked.');
+
+              // After button click, wait briefly then search for the "Archive" option
+              setTimeout(() => {
+                const archiveOption = Array.from(dropdownContent.querySelectorAll('div'))
+                  .find(div => div.textContent.trim() === 'Archive');
+
+                if (archiveOption) {
+                  archiveOption.click();
+                  console.log('Archive option clicked.');
+                } else {
+                  console.log('Archive option not found.');
+                }
+              }, 500); // Adjust timeout as needed
+            } else {
+              console.log('Button not found in dropdown container.');
+            }
+          } else {
+            console.log('Dropdown content not found inside the container.');
+          }
+        } else {
+          console.log('Dropdown container not found.');
+        }
+      }
+
+      // Function to handle keydown events
+      function handleKeyDown(event) {
+        // Check for Cmd + Shift + A (Mac) or Ctrl + Shift + A (Windows/Linux)
+        if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'a') {
+          event.preventDefault();
+          console.log('Cmd + Shift + A detected.');
+          triggerDropdownActions();
+        }
+      }
+
+      // Attach the event listener for keydown
+      document.addEventListener('keydown', handleKeyDown);
+      console.log('Event listener for Cmd + Shift + A attached.');
+    })();
+  `;
+
+  // Execute the JavaScript in the webview
+  view
+    .executeJavaScript(jsCode)
+    .then(() => {
+      console.log("Custom JS injected successfully.");
+    })
+    .catch((err) => {
+      console.error("Failed to inject custom JS:", err);
+    });
+};
+
+
+
+
+
+// export const monitorTitleBarChanges = (view) => {
+//   if (view) {
+//     view
+//       .executeJavaScript(
+//         `
+//           (function () {
+//             // Keydown event listener to detect Cmd + Shift + A
+//             document.addEventListener('keydown', (event) => {
+//               if (event.metaKey && event.shiftKey && event.key === 'a') {
+//                 event.preventDefault();
+//                 console.log('Cmd + Shift + A detected');
+//                 checkForTitleBar(); // Start checking for the title bar div when keys are pressed
+//               }
+//             });
+
+//             // Function to start observing the entire document for changes
+//             function startObservingUI() {
+//               const observer = new MutationObserver((mutationsList) => {
+//                 mutationsList.forEach((mutation) => {
+//                   // Check if the mutation added nodes or if any changes occurred
+//                   if (mutation.addedNodes.length > 0 || mutation.type === 'childList') {
+//                     // Continuously check for the msg-title-bar__title-bar-title
+//                     checkForTitleBar();
+//                   }
+//                 });
+//               });
+
+//               // Start observing the entire document body for child changes
+//               observer.observe(document.body, { childList: true, subtree: true });
+//               // console.log('Started observing UI changes.');
+//             }
+
+//             // Function to continuously check for the target title bar div
+//             function checkForTitleBar() {
+//               const titleBarDiv = document.querySelector('.msg-title-bar__title-bar-title');
+
+//               if (titleBarDiv) {
+//                 // console.log('Found the title bar div:', titleBarDiv);
+//                 handleTitleBarInteraction(titleBarDiv); // Handle further interaction with the title bar div
+//               } else {
+//                 // console.log('Title bar div not found, waiting for changes...');
+//               }
+//             }
+
+//             // Function to handle interactions within the title bar div
+//             function handleTitleBarInteraction(titleBarDiv) {
+//               const dropdownButton = titleBarDiv.querySelector('.artdeco-dropdown--placement-bottom');
+
+//               if (dropdownButton) {
+//                 console.log('Dropdown button found within the title bar div, clicking...');
+//                 dropdownButton.click();
+//                 observeDropdownChanges(titleBarDiv); // Start observing dropdown changes within the div
+//               } else {
+//                 console.log('Dropdown button not found within the title bar div.');
+//               }
+//             }
+
+//             // Function to observe changes in the dropdown container within the title bar div
+//             function observeDropdownChanges(titleBarDiv) {
+//               const targetContainer = titleBarDiv.querySelector('.msg-thread-actions__dropdown-container');
+
+//               if (!targetContainer) {
+//                 // console.log('Dropdown container not found within the title bar div, retrying...');
+//                 setTimeout(() => observeDropdownChanges(titleBarDiv), 1000); // Retry observing every 1 second until found
+//                 return;
+//               }
+
+//               // Set up a MutationObserver to monitor the target container within the title bar div
+//               const observer = new MutationObserver((mutationsList) => {
+//                 mutationsList.forEach((mutation) => {
+//                   // Check if an <ul> was added to the DOM
+//                   mutation.addedNodes.forEach((node) => {
+//                     if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'UL') {
+//                       // console.log('UL element added to DOM within the title bar div:', node);
+//                       hideULAndClick(node);
+//                     }
+//                   });
+//                 });
+//               });
+
+//               observer.observe(targetContainer, { childList: true, subtree: true });
+//               // console.log('Started observing dropdown container for changes within the title bar div.');
+//             }
+
+//             // Function to hide the <ul> element and click on the specific <div> inside it
+//             function hideULAndClick(ulElement) {
+//               ulElement.style.visibility = 'hidden'; // Hide the <ul> element
+//               // console.log('UL element visibility set to hidden within the title bar div.');
+
+//               // Find the target div within the <ul>
+//               const targetDiv = ulElement.querySelector(
+//                 '.msg-thread-actions__dropdown-option[data-view-name="message-toolbar-dropdown-toggle-archive"]'
+//               );
+
+//               if (targetDiv) {
+//                 // console.log('Target div found within the UL, performing click:', targetDiv);
+//                 targetDiv.click(); // Click on the specific <div>
+//               } else {
+//                 // console.log('Target div not found in the UL within the title bar div, retrying...');
+//               }
+//             }
+
+//             // Start observing the UI for changes
+//             startObservingUI();
+//           })();
+//         `
+//       )
+//       .then(() => {
+//         console.log(
+//           `Started monitoring changes for WebView ${view.getAttribute(
+//             "data-id"
+//           )}`
+//         );
+//       })
+//       .catch((err) =>
+//         console.error(
+//           `Failed to monitor changes for WebView ${view.getAttribute(
+//             "data-id"
+//           )}:`,
+//           err
+//         )
+//       );
+//   }
+// };
+
+
+
+

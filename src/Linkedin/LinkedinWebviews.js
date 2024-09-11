@@ -2,19 +2,16 @@
 import React, { useEffect, useRef, useContext, useState } from "react";
 import { useAccounts } from "./AccountsProvider"; // Accessing accounts context
 import PersonOffIcon from "@mui/icons-material/PersonOff"; // Import the icon for the empty state
-import { injectTryGetAccountName, injectShortcutHandler, goToProfile, injectProfileView, updateRoles, updateList, injectCustomJS, addLabel } from "../Scripts/linkedinScripts";
+import { injectTryGetAccountName, injectShortcutHandler, goToProfile, injectProfileView, updateRoles, updateList, injectCustomJS, addLabel, updateLabels, updateLabelTags , handleDropdownClick } from "../Scripts/linkedinScripts";
 import { ProfileContext } from "../auth/ProfileProvider";
+import { useLabels } from "../auth/LabelsProvider";
 
 const LinkedinWebviews = () => {
   const { accounts, activeAccount, addAccount, changeName, switchNav } = useAccounts();
   const { selectedProfiles, checkedItems, loading } = useContext(ProfileContext);
+  const {labels} = useLabels()
 
   const webviewRefs = useRef({}); // Store references to each webview element
-
-  // Function to handle adding a new account
-  const handleAddAccount = async () => {
-    await addAccount();
-  };
 
   // Effect to adjust z-index for active account's webviews
   useEffect(() => {
@@ -33,16 +30,21 @@ const LinkedinWebviews = () => {
     if (view) {
       
       view.addEventListener("dom-ready", () => {
-        
+
         if (type === "messaging") {
-          // view.openDevTools();
+          view.openDevTools();
           injectTryGetAccountName(view, accountId, changeName);
+          updateLabels(labels, view)
           injectShortcutHandler(view);
           goToProfile(view, accountId);
           updateRoles(selectedProfiles, view);
           updateList(checkedItems, view)
           injectCustomJS(view, accountId);
-          addLabel(view, accountId)
+          addLabel(view, accountId);
+          updateLabelTags(view);
+          handleDropdownClick(view)
+          
+          
         } else if (type === "profile") {
           injectProfileView(view, accountId);
         }
@@ -100,6 +102,20 @@ const LinkedinWebviews = () => {
       }
     }
   }, [checkedItems]);
+
+  useEffect(() => {
+    if (labels && !loading) {
+      if (Object.keys(webviewRefs.current).length > 0) {
+        Object.values(webviewRefs.current).forEach((view) => {
+          if (view.messaging) {
+            console.log(view.messaging);
+            updateLabels(labels, view.messaging);
+            // updateLabelTags(view.messaging)
+          }
+        });
+      }
+    }
+  }, [labels]);
   
 
   return (

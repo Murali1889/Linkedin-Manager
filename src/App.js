@@ -6,6 +6,7 @@ import Main from "./Main";
 import { useEffect, useState } from "react";
 import { AccountsProvider } from "./Linkedin/AccountsProvider";
 import { SheetsProvider } from "./Sheets/SheetsProvider";
+import { LabelsProvider } from "./auth/LabelsProvider";
 // import { SheetsProvider } from "./auth/SheetsProvider";
 
 const { Content } = Layout;
@@ -17,6 +18,7 @@ function App() {
       <AccountsProvider>
         <ProfileProvider>
             <SheetsProvider>
+              <LabelsProvider>
               <Layout>
                 <Content
                   style={{
@@ -29,6 +31,7 @@ function App() {
                   <Main />
                 </Content>
               </Layout>
+              </LabelsProvider>
             </SheetsProvider>
         </ProfileProvider>
       </AccountsProvider>

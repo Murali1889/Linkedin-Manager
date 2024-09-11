@@ -22,7 +22,7 @@ contextBridge.exposeInMainWorld('electron', {
   saveLinkedinAccounts: (accounts) => ipcRenderer.invoke('saveLinkedinAccounts', accounts),
   saveSheetsAccounts: (accounts)=> ipcRenderer.invoke('saveSheetsAccounts',accounts),
   getSheetAccounts: ()=> ipcRenderer.invoke('getSheetAccounts'),
-  addLabel: (code, id) => ipcRenderer.send('add-label',{code, id}),
+  addLabel: (code, id, name) => ipcRenderer.send('add-label',{code, id, name}),
   openProfile: (url, id) => ipcRenderer.send('open-profile', {url, id}),
   onProfileNotification: (callback) => ipcRenderer.on('profile-notification', (event, data) => {
     console.log('Data received from main:', data); // Debugging line
