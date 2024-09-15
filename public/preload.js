@@ -24,9 +24,13 @@ contextBridge.exposeInMainWorld('electron', {
   getSheetAccounts: ()=> ipcRenderer.invoke('getSheetAccounts'),
   addLabel: (code, id, name) => ipcRenderer.send('add-label',{code, id, name}),
   openProfile: (url, id) => ipcRenderer.send('open-profile', {url, id}),
+  removeLabel: (labelName, code, name) => ipcRenderer.send('remove-label',{labelName, code, name}),
   onProfileNotification: (callback) => ipcRenderer.on('profile-notification', (event, data) => {
     console.log('Data received from main:', data); // Debugging line
     callback(data);
+  }),
+  onRemoveLable: (callback) => ipcRenderer.on('removed-label', (event, data)=>{
+    callback(data)
   }),
   onAddLabel: (callback) => ipcRenderer.on('open-label', (event, data) => {
     console.log('Data received from main:', data); // Debugging line

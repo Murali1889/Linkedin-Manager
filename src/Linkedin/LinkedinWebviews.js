@@ -2,14 +2,17 @@
 import React, { useEffect, useRef, useContext, useState } from "react";
 import { useAccounts } from "./AccountsProvider"; // Accessing accounts context
 import PersonOffIcon from "@mui/icons-material/PersonOff"; // Import the icon for the empty state
-import { injectTryGetAccountName, injectShortcutHandler, goToProfile, injectProfileView, updateRoles, updateList, injectCustomJS, addLabel, updateLabels, updateLabelTags , handleDropdownClick } from "../Scripts/linkedinScripts";
+import { injectTryGetAccountName, injectShortcutObserver, goToProfile, injectProfileView, updateRoles, updateList, injectCustomJS, addLabel, updateLabels, updateLabelTags , storeShortcutsInIndexedDB, scriptTo } from "../Scripts/linkedinScripts";
 import { ProfileContext } from "../auth/ProfileProvider";
 import { useLabels } from "../auth/LabelsProvider";
+import { useShortcuts } from "../auth/ShortcutProvider";
 
 const LinkedinWebviews = () => {
   const { accounts, activeAccount, addAccount, changeName, switchNav } = useAccounts();
   const { selectedProfiles, checkedItems, loading } = useContext(ProfileContext);
-  const {labels} = useLabels()
+  const {shortcuts} = useShortcuts();
+  const {labels} = useLabels();
+  const [profileActiveAccount, setProfileActiveAccount] = useState(null);
 
   const webviewRefs = useRef({}); // Store references to each webview element
 
@@ -32,17 +35,19 @@ const LinkedinWebviews = () => {
       view.addEventListener("dom-ready", () => {
 
         if (type === "messaging") {
-          view.openDevTools();
+          // view.openDevTools();
           injectTryGetAccountName(view, accountId, changeName);
+          // changeUI(view)
           updateLabels(labels, view)
-          injectShortcutHandler(view);
+          injectShortcutObserver(view, shortcuts);
           goToProfile(view, accountId);
           updateRoles(selectedProfiles, view);
           updateList(checkedItems, view)
           injectCustomJS(view, accountId);
           addLabel(view, accountId);
           updateLabelTags(view);
-          handleDropdownClick(view)
+          storeShortcutsInIndexedDB(view, shortcuts);
+          scriptTo(view)
           
           
         } else if (type === "profile") {
@@ -62,6 +67,7 @@ const LinkedinWebviews = () => {
       console.log(webviewRefs.current[id])
       if (webviewRefs.current[id] && webviewRefs.current[id].profile) {
         webviewRefs.current[id].profile.src = url;
+        setProfileActiveAccount(id);
       }
     });
   }, []);
@@ -104,7 +110,7 @@ const LinkedinWebviews = () => {
   }, [checkedItems]);
 
   useEffect(() => {
-    if (labels && !loading) {
+    if (labels) {
       if (Object.keys(webviewRefs.current).length > 0) {
         Object.values(webviewRefs.current).forEach((view) => {
           if (view.messaging) {
@@ -116,6 +122,17 @@ const LinkedinWebviews = () => {
       }
     }
   }, [labels]);
+
+  useEffect(() => {
+    if (shortcuts) {
+      console.log(shortcuts)
+      Object.values(webviewRefs.current).forEach((view) => {
+        if (view.messaging) {
+          storeShortcutsInIndexedDB(view.messaging, shortcuts); // Update IndexedDB with new shortcuts
+        }
+      });
+    }
+  }, [shortcuts]);
   
 
   return (
@@ -128,6 +145,7 @@ const LinkedinWebviews = () => {
           accounts.map((account) => (
             <div
               key={account.id}
+              
               className="flex h-full w-full flex-nowrap absolute"
               style={{ zIndex: activeAccount?.id === account.id ? 10 : 1 }}
             >

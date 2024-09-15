@@ -27,6 +27,7 @@ export const SheetsProvider = ({ children }) => {
             name: data[sheetId].name ? data[sheetId].name.replace(/\n/g, "") : "",
           }));
 
+          console.log(sheetsArray);
           setSheetData(sheetsArray);
         } else {
           console.log("No sheets data available");

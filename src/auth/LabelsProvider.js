@@ -1,6 +1,5 @@
-// LabelsProvider.js
 import { createContext, useContext, useState, useEffect } from 'react';
-import { ref, onValue } from 'firebase/database'; // Import required Firebase functions
+import { ref, onValue, get, update } from 'firebase/database'; // Import required Firebase functions
 import { database } from './firebaseConfig'; // Ensure the correct path to your Firebase config
 
 // Create context
@@ -15,7 +14,8 @@ export const LabelsProvider = ({ children }) => {
   const [headerLabels, setHeaderLabels] = useState([]); // State for header labels
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  console.log(headerLabels)
+
+  console.log(headerLabels);
 
   // Function to fetch labels with real-time updates
   useEffect(() => {
@@ -41,7 +41,7 @@ export const LabelsProvider = ({ children }) => {
 
               if (!codeMap[code]) {
                 // Initialize a new entry for this code
-                codeMap[code] = { code, labels: [], codeName:name };
+                codeMap[code] = { code, labels: [], codeName: name };
               }
 
               // Add the current label (name and color) to the labels array, avoiding duplicates
@@ -49,11 +49,11 @@ export const LabelsProvider = ({ children }) => {
                 codeMap[code].labels.push({ name: labelName, color });
 
                 // Check if the header label name is already in the map; add only if it's unique
-                if (!headerLabelsMap.has(labelName)) {
-                  headerLabelsMap.set(labelName, { name: labelName, color });
-                }
               }
             });
+            if (!headerLabelsMap.has(labelName)) {
+              headerLabelsMap.set(labelName, { name: labelName, color });
+            }
           });
 
           // Convert the codeMap back to an array format for state
@@ -61,7 +61,8 @@ export const LabelsProvider = ({ children }) => {
 
           // Convert headerLabelsMap back to an array format
           const formattedHeaderLabels = Array.from(headerLabelsMap.values());
-          console.log(formattedLabels)
+
+          console.log(formattedLabels);
           setLabels(formattedLabels);
           setHeaderLabels(formattedHeaderLabels);
         } else {
@@ -80,6 +81,44 @@ export const LabelsProvider = ({ children }) => {
 
     // Cleanup listener on component unmount
     return () => unsubscribe();
+  }, []);
+
+  // Function to handle label removal
+  useEffect(() => {
+    window.electron.onRemoveLable(async (data) => {
+      const { labelName, code, name } = data;
+
+      // Reference to the specific label in the database
+      const labelRef = ref(database, `labels/${labelName}/codes`);
+      
+      try {
+        // Fetch the current data of the label to check if the code exists
+        const snapshot = await get(labelRef);
+
+        if (snapshot.exists()) {
+          const codes = snapshot.val();
+          const codeKey = Object.keys(codes).find(
+            (key) => codes[key].code === code && codes[key].name === name
+          );
+
+          if (codeKey) {
+            // If the label exists, remove the specific code
+            const updates = {};
+            updates[`labels/${labelName}/codes/${codeKey}`] = null;
+
+            await update(ref(database), updates);
+
+            console.log(`Removed code ${code} from label ${labelName}`);
+          } else {
+            console.log(`Code ${code} not found in label ${labelName}`);
+          }
+        } else {
+          console.log(`Label ${labelName} does not exist in the database.`);
+        }
+      } catch (error) {
+        console.error('Error removing label:', error);
+      }
+    });
   }, []);
 
   return (

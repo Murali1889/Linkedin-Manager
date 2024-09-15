@@ -74,6 +74,7 @@ const LabelSelector = ({ onClose, code, name }) => {
     } catch (error) {
       console.error('Error adding code to label:', error);
     }
+    onClose();
   };
 
   const handleCreateNewLabel = () => {
@@ -129,11 +130,6 @@ const LabelSelector = ({ onClose, code, name }) => {
         </IconButton>
         <div className="flex items-center">
           <span className="font-semibold">Select a Label:</span>
-          <div className="ml-auto">
-            <IconButton>
-              <SearchIcon />
-            </IconButton>
-          </div>
         </div>
         <TextField
           variant="standard"

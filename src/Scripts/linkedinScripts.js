@@ -27,13 +27,13 @@ export const updateRoles = (selectedProfiles, view) => {
                     // Clear existing store
                     store.clear().onsuccess = () => {
                       const namesArray = ${JSON.stringify(
-                        namesList
-                      )}.map((profile, index) => ({ id: index, profile }));
+          namesList
+        )}.map((profile, index) => ({ id: index, profile }));
                       namesArray.forEach(item => store.add(item));
                     };
     
                     transaction.oncomplete = () => {
-                      console.log('IndexedDB updated with namesList in WebView');
+                      // console.log('IndexedDB updated with namesList in WebView');
                     };
     
                     transaction.onerror = (error) => {
@@ -76,14 +76,14 @@ export const updateList = (checkedItems, view) => {
                 try {
                   // Convert the checked items to an array if not already
                   const itemsToStore = Array.isArray(${JSON.stringify(
-                    checkedItems
-                  )}) ? ${JSON.stringify(checkedItems)} : [${JSON.stringify(
+          checkedItems
+        )}) ? ${JSON.stringify(checkedItems)} : [${JSON.stringify(
           checkedItems
         )}];
                   
                   // Store the checked items in localStorage under 'namesList'
                   localStorage.setItem('namesList', JSON.stringify(itemsToStore));
-                  console.log('namesList updated in localStorage with checked items:', itemsToStore);
+                  // console.log('namesList updated in localStorage with checked items:', itemsToStore);
                 } catch (error) {
                   console.error('Failed to update namesList in localStorage:', error);
                 }
@@ -112,7 +112,7 @@ export const injectCustomJS = (view, id) => {
   const jsCode = `
     (function() {
       const log = (message) => {
-        console.log(message);
+        // console.log(message);
       };
       let namesListInterval;
       let observer;
@@ -191,7 +191,7 @@ export const injectCustomJS = (view, id) => {
                   const matchedName = namesList.find(item => item.name === name);
                   let roleTagId = 'role-tag-' + name.replace(/\\s+/g, '-');
                   roleTagId = CSS.escape(roleTagId);
-                  console.log(\`#\${roleTagId}\`);
+                  // console.log(\`#\${roleTagId}\`);
                   let existingRoleTag = li.querySelector(\`#\${roleTagId}\`);
                   li.style.display = 'block';
                   if (matchedName && (ids.some(id => id === matchedName.roleId) || ids.length === 0)) {
@@ -413,7 +413,7 @@ export const injectCustomJS = (view, id) => {
   view
     .executeJavaScript(jsCode)
     .then(() => {
-      console.log(`Custom JS injected into WebView ${id}`);
+      // console.log(`Custom JS injected into WebView ${id}`);
     })
     .catch((err) =>
       console.error(`Failed to inject custom JS into WebView ${id}:`, err)
@@ -456,7 +456,7 @@ export const injectTryGetAccountName = (view, id, changeName) => {
               mainElement.style.display = 'none';
             }
           } catch (error) {
-            console.log('Error customizing LinkedIn: ' + error.message);
+            // console.log('Error customizing LinkedIn: ' + error.message);
           }
         }
   
@@ -538,7 +538,7 @@ export const injectTryGetAccountName = (view, id, changeName) => {
               `
               (function() {
                 const name = localStorage.getItem('name');
-                console.log(name)
+                // console.log(name)
                 return name;
               })();
             `
@@ -548,7 +548,7 @@ export const injectTryGetAccountName = (view, id, changeName) => {
                 clearInterval(interval); // Stop the interval once the name is found
                 resolve(name);
               } else {
-                console.log(`Name not found yet for id ${id}, retrying...`);
+                // console.log(`Name not found yet for id ${id}, retrying...`);
               }
             })
             .catch((error) => {
@@ -560,155 +560,195 @@ export const injectTryGetAccountName = (view, id, changeName) => {
     })
     .then((name) => {
       changeName({ id: id, newName: name });
-      console.log(`Account name for id ${id}: ${name}`);
+      // console.log(`Account name for id ${id}: ${name}`);
     })
     .catch((error) => {
       console.error(`Failed to get account name for id ${id}: `, error);
     });
 };
-export const injectShortcutHandler = (view) => {
+export const storeShortcutsInIndexedDB = (view, shortcuts) => {
+  console.log(shortcuts)
+  if (view && shortcuts) {
+    console.log(view);
+    console.log(shortcuts)
+    view.executeJavaScript(`
+      (function() {
+        console.log('Storing shortcuts in IndexedDB');
+        
+        // Open IndexedDB connection
+        const request = indexedDB.open('ShortcutsDB', 1);
+        
+        request.onupgradeneeded = function(event) {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains('shortcuts')) {
+            db.createObjectStore('shortcuts', { keyPath: 'id' });
+          }
+        };
+
+        request.onsuccess = function(event) {
+          const db = event.target.result;
+          const transaction = db.transaction(['shortcuts'], 'readwrite');
+          const store = transaction.objectStore('shortcuts');
+          
+          // Clear old shortcuts
+          store.clear();
+          
+          // Store new shortcuts
+          Object.keys(${JSON.stringify(shortcuts)}).forEach((key) => {
+            console.log(key);
+            store.add({ id: key, text: ${JSON.stringify(shortcuts)}[key] });
+          });
+
+          transaction.oncomplete = function() {
+            console.log('Shortcuts stored successfully in IndexedDB');
+          };
+        };
+
+        request.onerror = function() {
+          console.error('Failed to open IndexedDB');
+        };
+      })();
+    `).then(() => {
+      console.log('Shortcuts injected and stored into IndexedDB');
+    }).catch((err) => {
+      console.error('Failed to store shortcuts into IndexedDB:', err);
+    });
+  }
+};
+
+export const injectShortcutObserver = (view) => {
   if (view) {
-    view
-      .executeJavaScript(
-        `
-          (function() {
-            console.log('Shortcut handler script loaded.');
+    view.executeJavaScript(`
+      (function() {
+        console.log('Observing message box for input and fetching shortcuts from IndexedDB');
 
-            // Define shortcut commands and their corresponding text
-            const shortcuts = {
-              "/intro": "Hello, <<name>>! This is an introduction message.",
-              "/dequed": "Your request has been dequeued, <<name>>.",
-              "/confirm": "Thank you for confirming, <<name>>.",
-              "/thanks": "Thanks a lot, <<name>>!",
-              "/feedback": "We appreciate your feedback, <<name>>."
-            };
+        // Function to show the filtered shortcut list
+        function showShortcutList(filteredCommands) {
+          try {
+            const existingList = document.getElementById('shortcut-list');
+            if (existingList) existingList.remove();  // Remove any existing list
 
-            // Function to replace placeholder with actual name
-            function replaceName(text, name) {
-              console.log('Replacing name in text:', text);
-              return text.replace(/<<name>>/g, name);
-            }
+            const list = document.createElement('ul');
+            list.id = 'shortcut-list';
+            list.style.position = 'absolute';
+            list.style.backgroundColor = '#ffffff';
+            list.style.padding = '10px 20px';
+            list.style.listStyle = 'none';
+            list.style.zIndex = '9999';
+            list.style.borderRadius = '20px';
+            list.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.15)';
+            list.style.maxHeight = '150px';
+            list.style.overflowY = 'auto';
+            list.style.width = '360px';
 
-            // Function to fetch the name from the page
-            function getName() {
-              const nameElement = document.querySelector('h2.msg-entity-lockup__entity-title');
-              const name = nameElement ? nameElement.textContent.trim() : "there";
-              console.log('Fetched name:', name);
-              return name;
-            }
+            filteredCommands.forEach((shortcut) => {
+              const listItem = document.createElement('li');
+              listItem.textContent = shortcut.id;
+              listItem.style.padding = '8px 10px';
+              listItem.style.cursor = 'pointer';
+              listItem.style.borderBottom = '1px solid #ddd';
 
-            // Function to show the shortcut list
-            function showShortcutList(filteredCommands) {
-              console.log('Showing shortcut list with commands:', filteredCommands);
-              let existingList = document.getElementById('shortcut-list');
-              if (existingList) existingList.remove(); // Remove existing list if already present
-
-              const list = document.createElement('ul');
-              list.id = 'shortcut-list';
-              list.style.position = 'absolute';
-              list.style.backgroundColor = '#ffffff';
-              list.style.padding = '10px 20px';
-              list.style.listStyle = 'none';
-              list.style.zIndex = '9999';
-              list.style.borderRadius = '20px';
-              list.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.15)';
-              list.style.maxHeight = '150px';
-              list.style.overflowY = 'auto';
-              list.style.overflowX = 'hidden';
-              list.style.width = '360px';
-              list.style.margin = '0 auto';
-
-              // Custom scrollbar styles
-              list.style.scrollbarWidth = 'thin';
-              list.style.scrollbarColor = 'black transparent';
-
-              // Apply custom scrollbar styles
-              const scrollbarStyles = document.createElement('style');
-              scrollbarStyles.innerHTML = \`
-                #shortcut-list::-webkit-scrollbar {
-                  width: 1px;
-                }
-                #shortcut-list::-webkit-scrollbar-thumb {
-                  background-color: black;
-                }
-              \`;
-              document.head.appendChild(scrollbarStyles);
-
-              filteredCommands.forEach((shortcut) => {
-                const listItem = document.createElement('li');
-                listItem.textContent = shortcut;
-                listItem.style.padding = '8px 10px';
-                listItem.style.cursor = 'pointer';
-                listItem.style.borderBottom = '1px solid #ddd'; // Border bottom for each item
-                listItem.style.transition = 'background-color 0.2s ease';
-                listItem.setAttribute('role', 'button'); // Accessibility feature
-
-                // Highlight the selected item on focus
-                listItem.addEventListener('mouseenter', () => {
-                  listItem.style.backgroundColor = '#e0e7ff';
-                });
-
-                listItem.addEventListener('mouseleave', () => {
-                  listItem.style.backgroundColor = 'transparent';
-                });
-
-                listItem.addEventListener('click', () => {
-                  const name = getName();
+              listItem.addEventListener('click', () => {
+                try {
                   const messageBox = document.querySelector('.msg-form__contenteditable p');
                   if (messageBox) {
-                    messageBox.textContent = replaceName(shortcuts[shortcut], name);
-                    console.log('Inserted shortcut text:', shortcuts[shortcut]);
-                    // Trigger input events for LinkedIn
+                    messageBox.textContent = shortcut.text;
+
                     ['input', 'keyup', 'keydown'].forEach(eventType => {
                       const event = new Event(eventType, { bubbles: true });
                       messageBox.dispatchEvent(event);
                     });
                   }
-                  list.remove(); // Remove the list after selection
-                  console.log('Shortcut list removed after selection.');
-                });
-
-                list.appendChild(listItem);
-              });
-
-              document.body.appendChild(list);
-              const messageBox = document.querySelector('.msg-form__contenteditable');
-              const rect = messageBox.getBoundingClientRect();
-              list.style.top = (rect.top - list.offsetHeight - 5) + 'px'; 
-              list.style.left = (rect.left + (rect.width / 2) - (list.offsetWidth / 2)) + 'px';
-              console.log('Shortcut list added to the DOM.');
-            }
-
-            // Function to filter commands based on input
-            function filterCommands(input) {
-              const filtered = Object.keys(shortcuts).filter(command => command.startsWith(input));
-              console.log('Filtered commands:', filtered);
-              return filtered;
-            }
-
-            // Function to handle input changes and check for shortcuts
-            function handleInputChanges(mutations) {
-              mutations.forEach((mutation) => {
-                if (mutation.type === 'characterData') {
-                  const inputText = mutation.target.textContent.trim();
-                  console.log('Current input text:', inputText);
-                  if (inputText.startsWith('/')) {
-                    const filteredCommands = filterCommands(inputText);
-                    if (filteredCommands.length > 0) {
-                      showShortcutList(filteredCommands);
-                    }
-                  } else {
-                    const existingList = document.getElementById('shortcut-list');
-                    if (existingList) {
-                      existingList.remove();
-                      console.log('Removed shortcut list as input no longer starts with "/".');
-                    }
-                  }
+                  list.remove();
+                } catch (err) {
+                  console.error('Failed to update message box:', err);
                 }
               });
-            }
 
-            // Observe the <p> tag inside the message box for changes
+              list.appendChild(listItem);
+            });
+
+            document.body.appendChild(list);
+
+            const messageBox = document.querySelector('.msg-form__contenteditable');
+            const rect = messageBox.getBoundingClientRect();
+            list.style.top = (rect.top - list.offsetHeight - 5) + 'px'; 
+            list.style.left = (rect.left + (rect.width / 2) - (list.offsetWidth / 2)) + 'px';
+          } catch (err) {
+            console.error('Failed to show shortcut list:', err);
+          }
+        }
+
+        // Function to fetch shortcuts from IndexedDB
+        function fetchShortcutsFromIndexedDB(input, callback) {
+          try {
+            const request = indexedDB.open('ShortcutsDB', 1);
+            
+            request.onsuccess = function(event) {
+              try {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('shortcuts')) {
+                  console.error('Object store "shortcuts" not found in IndexedDB');
+                  return;
+                }
+                const transaction = db.transaction(['shortcuts'], 'readonly');
+                const store = transaction.objectStore('shortcuts');
+                const shortcuts = [];
+
+                store.openCursor().onsuccess = function(event) {
+                  const cursor = event.target.result;
+                  if (cursor) {
+                    if (cursor.key.startsWith(input)) {
+                      shortcuts.push(cursor.value);
+                    }
+                    cursor.continue();
+                  } else {
+                    callback(shortcuts);
+                  }
+                };
+
+                store.openCursor().onerror = function() {
+                  console.error('Failed to fetch shortcuts from IndexedDB');
+                };
+              } catch (err) {
+                console.error('Failed during IndexedDB success handler:', err);
+              }
+            };
+
+            request.onerror = function() {
+              console.error('Failed to open IndexedDB:', event);
+            };
+          } catch (err) {
+            console.error('Failed to fetch shortcuts from IndexedDB:', err);
+          }
+        }
+
+        // Function to observe input changes in the message box
+        function handleInputChanges(mutations) {
+          try {
+            mutations.forEach((mutation) => {
+              if (mutation.type === 'characterData') {
+                const inputText = mutation.target.textContent.trim();
+                if (inputText.startsWith('/')) {
+                  const command = inputText.slice(1);  // Remove the '/' prefix
+                  fetchShortcutsFromIndexedDB(command, (shortcuts) => {
+                    if (shortcuts.length > 0) {
+                      showShortcutList(shortcuts);
+                    }
+                  });
+                } else {
+                  const existingList = document.getElementById('shortcut-list');
+                  if (existingList) existingList.remove();
+                }
+              }
+            });
+          } catch (err) {
+            console.error('Failed to handle input changes:', err);
+          }
+        }
+
+        // Continuously check for the message box and add observer
+         // Observe the <p> tag inside the message box for changes
             function addObserver() {
               const pTag = document.querySelector('.msg-form__contenteditable p');
               if (pTag) {
@@ -756,25 +796,12 @@ export const injectShortcutHandler = (view) => {
             document.addEventListener('input', () => {
               reAddObserver();
             });
-
-          })();
-        `
-      )
-      .then(() =>
-        console.log(
-          `Shortcut handler injected into WebView ${view.getAttribute(
-            "data-id"
-          )}`
-        )
-      )
-      .catch((err) =>
-        console.error(
-          `Failed to inject shortcut handler for WebView ${view.getAttribute(
-            "data-id"
-          )}:`,
-          err
-        )
-      );
+      })();
+    `).then(() => {
+      console.log('Observer injected to WebView for monitoring input');
+    }).catch((err) => {
+      console.error('Failed to inject observer:', err);
+    });
   }
 };
 
@@ -803,10 +830,10 @@ export const goToProfile = (view, accountId) => {
               const updatedProfileLink = document.querySelector('.msg-thread__link-to-profile');
               if (updatedProfileLink) {
                 const updatedProfileUrl = updatedProfileLink.getAttribute('href');
-                console.log('Current Profile URL:', updatedProfileUrl);
+                // console.log('Current Profile URL:', updatedProfileUrl);
                 window.electron.openProfile(updatedProfileUrl, '${accountId}');
               } else {
-                console.log('Profile link not found.');
+                // console.log('Profile link not found.');
               }
             });
   
@@ -840,7 +867,7 @@ export const goToProfile = (view, accountId) => {
   view
     .executeJavaScript(jsCode)
     .then(() => {
-      console.log(`Custom JS injected into WebView ${accountId}`);
+      // console.log(`Custom JS injected into WebView ${accountId}`);
     })
     .catch((err) =>
       console.error(
@@ -882,7 +909,7 @@ export const injectProfileView = (view, id) => {
               mainElement.style.display = 'none';
             }
           } catch (error) {
-            console.log('Error customizing LinkedIn: ' + error.message);
+            // console.log('Error customizing LinkedIn: ' + error.message);
           }
         }
   
@@ -905,7 +932,7 @@ export const injectProfileView = (view, id) => {
   view
     .executeJavaScript(jsCode)
     .then((name) => {
-      console.log(`Account name for id ${id}: ${name}`);
+      // console.log(`Account name for id ${id}: ${name}`);
     })
     .catch((error) => {
       console.error(`Failed to get account name for id ${id}: `, error);
@@ -917,11 +944,11 @@ export const addLabel = (view, accountId) => {
     (function() {
       // Function to handle keydown events
       function handleKeyDown(event) {
-        console.log('Keydown event detected:', event.key);
+        // console.log('Keydown event detected:', event.key);
         // Check for Cmd+L (Mac) or Ctrl+L (Windows/Linux)
         if ((event.metaKey || event.ctrlKey) && event.key === 'l') {
           event.preventDefault(); // Prevent default browser action
-          console.log('Cmd+L or Ctrl+L pressed. Searching for active conversation...');
+          // console.log('Cmd+L or Ctrl+L pressed. Searching for active conversation...');
           checkActiveConversation();
         }
       }
@@ -931,9 +958,9 @@ export const addLabel = (view, accountId) => {
         // Find the active conversation list item
         const activeLi = document.querySelector('.msg-conversations-container__convo-item-link--active');
         if (activeLi) {
-          console.log('Active conversation detected:', activeLi);
+          // console.log('Active conversation detected:', activeLi);
           const nameTag = activeLi.querySelector('h3.msg-conversation-listitem__participant-names span.truncate');
-          console.log(nameTag)
+          // console.log(nameTag)
           if (nameTag) {
             const imgElement = activeLi.querySelector('img.presence-entity__image');
             const imgSrc = imgElement ? imgElement.src : null;
@@ -944,19 +971,19 @@ export const addLabel = (view, accountId) => {
             if (imgSrc && name) {
               window.electron.addLabel(imgSrc, '${accountId}', name);
             } else {
-              console.log('Name or image source not found.');
+              // console.log('Name or image source not found.');
             }
           } else {
-            console.log('Anchor element not found in active conversation.');
+            // console.log('Anchor element not found in active conversation.');
           }
         } else {
-          console.log('No active conversation detected.');
+          // console.log('No active conversation detected.');
         }
       }
 
       // Initialize the script and attach the event listeners
-      console.log('Initializing script...');
-      console.log('Attaching keydown event listener...');
+      // console.log('Initializing script...');
+      // console.log('Attaching keydown event listener...');
       document.addEventListener('keydown', handleKeyDown);
     })();
   `;
@@ -965,7 +992,7 @@ export const addLabel = (view, accountId) => {
   view
     .executeJavaScript(jsCode)
     .then(() => {
-      console.log("Custom JS injected successfully.");
+      // console.log("Custom JS injected successfully.");
     })
     .catch((err) => {
       console.error("Failed to inject custom JS:", err);
@@ -988,8 +1015,8 @@ export const updateLabels = (labels, view) => {
             request.onupgradeneeded = (event) => {
               const db = event.target.result;
               if (!db.objectStoreNames.contains(storeName)) {
-                db.createObjectStore(storeName, { keyPath: 'code' }); // Use 'code' as the key path
-                console.log('Created object store:', storeName);
+                db.createObjectStore(storeName, { keyPath: 'code' });
+                // console.log('Created object store:', storeName);
               }
             };
 
@@ -998,25 +1025,42 @@ export const updateLabels = (labels, view) => {
               const transaction = db.transaction(storeName, 'readwrite');
               const store = transaction.objectStore(storeName);
 
-              // Clear existing store
-              store.clear().onsuccess = () => {
-                // Convert labels to an array of individual code entries
-                const codesArray = ${JSON.stringify(labels)}
-                  .map(label => ({
-                    code: label.code, // Unique key for the object store
-                    codeName: label.codeName,
-                    labels: Array.isArray(label.labels) ? label.labels : [] // Ensure labels are stored as an array of objects with name and color
-                  }));
+              // Convert labels to an array of individual code entries
+              const codesArray = ${JSON.stringify(labels)}
+                .map(label => ({
+                  code: label.code,
+                  codeName: label.codeName,
+                  labels: Array.isArray(label.labels) ? label.labels : []
+                }));
 
-                console.log('Labels received:', ${JSON.stringify(labels)});
-                console.log('Formatted codes array:', codesArray);
+              // console.log('Labels received:', ${JSON.stringify(labels)});
+              // console.log('Formatted codes array:', codesArray);
 
-                // Add each code entry to the store
+              // Retrieve all existing labels from the store
+              const getAllRequest = store.getAll();
+
+              getAllRequest.onsuccess = (event) => {
+                const existingCodes = event.target.result || [];
+
+                // Determine which codes need to be removed or updated
+                const codesToRemove = existingCodes.filter(existing => 
+                  !codesArray.some(newCode => newCode.code === existing.code));
+
+                // console.log('Codes to remove:', codesToRemove);
+
+                // Remove outdated codes from the store
+                codesToRemove.forEach(codeToRemove => {
+                  store.delete(codeToRemove.code);
+                  removeLabelContainer(null, codeToRemove.code); // Remove from UI
+                  // console.log('Removed code:', codeToRemove.code);
+                });
+
+                // Update or insert new codes
                 codesArray.forEach(item => {
                   const putRequest = store.put(item);
 
                   putRequest.onsuccess = () => {
-                    console.log('Code stored successfully:', item);
+                    // console.log('Code stored successfully:', item);
                   };
 
                   putRequest.onerror = (error) => {
@@ -1026,17 +1070,155 @@ export const updateLabels = (labels, view) => {
               };
 
               transaction.oncomplete = () => {
-                console.log('IndexedDB updated with labels in WebView');
+                // console.log('IndexedDB updated with new labels');
+                updateLiElements(codesArray); // Update the UI
               };
 
               transaction.onerror = (error) => {
-                console.error('Failed to update IndexedDB in WebView:', error);
+                console.error('Failed to update IndexedDB:', error);
               };
             };
 
             request.onerror = (error) => {
-              console.error('Failed to open IndexedDB in WebView:', error);
+              console.error('Failed to open IndexedDB:', error);
             };
+
+            // Update <li> elements after DB update
+            function updateLiElements(codesArray) {
+              // console.log('Updating <li> elements with new labels...');
+              const liElements = document.querySelectorAll('ul.msg-conversations-container__conversations-list > li');
+
+              liElements.forEach(li => {
+                const anchorElement = li.querySelector('a.msg-conversation-listitem__link');
+                const imgElement = anchorElement ? anchorElement.querySelector('img.presence-entity__image') : null;
+                const imgSrc = imgElement ? imgElement.src : null;
+                const nameTag = li.querySelector('h3.msg-conversation-listitem__participant-names span.truncate');
+                
+                if (imgSrc && nameTag) {
+                  const nameContent = nameTag.textContent.trim();
+                  const labelData = codesArray.find(item => item.code === imgSrc);
+
+                  if (labelData && labelData.codeName === nameContent) {
+                    // console.log('Matching code found. Adding new labels...');
+                    addLabelsToContent(li, labelData); // Add new labels
+                  } else {
+                    // console.log('No matching code. Removing labels...');
+                    removeLabelContainer(li, imgSrc); // Remove outdated labels
+                  }
+                }
+              });
+            }
+
+            // Add labels to the content div in the <li> element
+            function addLabelsToContent(li, labelData) {
+              const parentDiv = li.querySelector('.msg-conversation-card__content--selectable');
+              if (!parentDiv) return;
+
+              const roleTagContainerId = \`label-tag-\${labelData.code}\`;
+              let roleTagContainer = parentDiv.querySelector(\`#\${CSS.escape(roleTagContainerId)}\`);
+
+              if (!roleTagContainer) {
+                roleTagContainer = document.createElement('div');
+                roleTagContainer.id = roleTagContainerId;
+                roleTagContainer.style.display = 'flex';
+                roleTagContainer.style.alignItems = 'center';
+                roleTagContainer.style.gap = '5px';
+                parentDiv.insertAdjacentElement('afterbegin', roleTagContainer);
+                parentDiv.style.height = '110px';
+              }
+
+              // Remove existing labels before adding new ones
+              roleTagContainer.innerHTML = '';
+
+              // Add new labels
+              labelData.labels.forEach(label => {
+                const roleSpanContainer = document.createElement('div');
+                roleSpanContainer.style.display = 'flex';
+                roleSpanContainer.style.alignItems = 'center';
+                roleSpanContainer.style.padding = '3px 6px';
+                roleSpanContainer.style.borderRadius = '5px';
+                roleSpanContainer.style.backgroundColor = '#f6f6f6';
+                roleSpanContainer.style.color = label.color;
+                roleSpanContainer.style.fontSize = '11px';
+                roleSpanContainer.style.marginRight = '5px';
+
+                const roleSpan = document.createElement('span');
+                roleSpan.textContent = label.name;
+
+                const closeButton = document.createElement('button');
+                closeButton.style.cursor = 'pointer';
+                closeButton.style.padding = '0';
+                closeButton.style.marginLeft = '5px';
+                closeButton.style.display = 'none';
+                closeButton.style.width = '10px';
+                closeButton.style.height = '10px';
+               const svgNS = "http://www.w3.org/2000/svg";
+const svgElement = document.createElementNS(svgNS, 'svg');
+svgElement.setAttribute('width', '7');
+svgElement.setAttribute('height', '7');
+svgElement.setAttribute('viewBox', '0 0 7 7');
+
+// Create <path> element for the SVG
+const pathElement = document.createElementNS(svgNS, 'path');
+pathElement.setAttribute('d', 'M6.81862 5.96446C7.06046 6.20653 7.06046 6.58309 6.81862 6.82517C6.6977 6.94621 6.5499 7 6.38868 7C6.22745 7 6.07965 6.94621 5.95873 6.82517L3.5 4.36407L1.04127 6.82517C0.920346 6.94621 0.772553 7 0.611324 7C0.450096 7 0.302303 6.94621 0.181382 6.82517C-0.0604607 6.58309 -0.0604607 6.20653 0.181382 5.96446L2.64012 3.50336L0.181382 1.04227C-0.0604607 0.800192 -0.0604607 0.423631 0.181382 0.181556C0.423225 -0.0605187 0.799424 -0.0605187 1.04127 0.181556L3.5 2.64265L5.95873 0.181556C6.20058 -0.0605187 6.57677 -0.0605187 6.81862 0.181556C7.06046 0.423631 7.06046 0.800192 6.81862 1.04227L4.35988 3.50336L6.81862 5.96446Z');
+pathElement.setAttribute('fill', 'black');
+
+// Append the <path> to the <svg>
+svgElement.appendChild(pathElement);
+
+// Append the <svg> to the button
+closeButton.appendChild(svgElement);
+
+                closeButton.onclick = async () => {
+      try {
+        // console.log('Removing label:', label.name);
+
+        // Remove the label from the DOM
+        roleSpanContainer.remove();
+
+        // Remove the label from the database
+        const db = await new Promise((resolve, reject) => {
+          const request = indexedDB.open('LabelsDB', 1);
+          request.onsuccess = (event) => resolve(event.target.result);
+          request.onerror = (error) => reject(error);
+        });
+
+        const transaction = db.transaction('codesStore', 'readwrite');
+        const store = transaction.objectStore('codesStore');
+        store.delete(labelData.code);
+
+        transaction.oncomplete = () => {
+          // console.log('Label removed from IndexedDB:', label.name);
+
+          // Send updated information to Electron
+          window.electron.removeLabel(label.name, labelData.code, labelData.codeName);
+        };
+
+        transaction.onerror = (error) => {
+          console.error('Failed to remove label from IndexedDB:', error);
+        };
+      } catch (error) {
+        console.error('Error removing label:', error);
+      }
+    };
+
+                roleSpanContainer.appendChild(roleSpan);
+                roleSpanContainer.appendChild(closeButton);
+                roleTagContainer.appendChild(roleSpanContainer);
+
+                roleSpanContainer.onmouseenter = () => (closeButton.style.display = 'flex');
+                roleSpanContainer.onmouseleave = () => (closeButton.style.display = 'none');
+              });
+            }
+
+            // Remove outdated labels from the UI
+            function removeLabelContainer(li, code) {
+              const roleTagContainer = li ? li.querySelector(\`#label-tag-\${CSS.escape(code)}\`) : null;
+              if (roleTagContainer) {
+                // console.log('Removing label container for code:', code);
+                roleTagContainer.remove();
+              }
+            }
           } catch (error) {
             console.error('Error updating labels:', error);
           }
@@ -1045,7 +1227,7 @@ export const updateLabels = (labels, view) => {
       )
       .then(() =>
         console.log(
-          `Updated labels in IndexedDB for WebView ${view.getAttribute(
+          `Updated labels in IndexedDB and UI for WebView ${view.getAttribute(
             "data-id"
           )}`
         )
@@ -1070,23 +1252,25 @@ export const updateLabelTags = (view) => {
         (function() {
           const dbName = 'LabelsDB';
           const storeName = 'codesStore';
+          let labelCache = {}; // Local cache for IndexedDB data
 
-          // Initialize the IndexedDB
+          // Initialize the IndexedDB and cache label data
           function initIndexedDB() {
-            console.log('Initializing IndexedDB...');
+            // console.log('Initializing IndexedDB...');
             const request = indexedDB.open(dbName, 1);
 
             request.onupgradeneeded = (event) => {
               const db = event.target.result;
               if (!db.objectStoreNames.contains(storeName)) {
                 db.createObjectStore(storeName, { keyPath: 'code' });
-                console.log('Created object store:', storeName);
+                // console.log('Created object store:', storeName);
               }
             };
 
             request.onsuccess = (event) => {
               const db = event.target.result;
-              console.log('IndexedDB initialized successfully.');
+              // console.log('IndexedDB initialized successfully.');
+              loadLabelsFromDB(db); // Preload all label data into cache
               observeListChanges(db); // Start observing changes in the <ul> element
             };
 
@@ -1095,30 +1279,61 @@ export const updateLabelTags = (view) => {
             };
           }
 
+          // Load all label data from IndexedDB into cache
+          function loadLabelsFromDB(db) {
+            const transaction = db.transaction(storeName, 'readonly');
+            const store = transaction.objectStore(storeName);
+            const getAllRequest = store.getAll();
+
+            getAllRequest.onsuccess = (event) => {
+              labelCache = event.target.result.reduce((acc, labelData) => {
+                acc[labelData.code] = labelData;
+                return acc;
+              }, {});
+              // console.log('Label data loaded into cache:', labelCache);
+              updateLiElements(); // Update the UI initially with cached data
+            };
+
+            getAllRequest.onerror = (error) => {
+              console.error('Failed to load labels from IndexedDB:', error);
+            };
+          }
+
+          // Throttle function to limit how often updateLiElements is called
+          function throttle(func, delay) {
+            let lastCall = 0;
+            return (...args) => {
+              const now = new Date().getTime();
+              if (now - lastCall >= delay) {
+                lastCall = now;
+                return func(...args);
+              }
+            };
+          }
+
           // Observe changes in the <ul> element
           function observeListChanges(db) {
-            console.log('Observing changes in the <ul> element...');
+            // console.log('Observing changes in the <ul> element...');
             const ulElement = document.querySelector('ul.msg-conversations-container__conversations-list');
 
             if (!ulElement) {
-              console.log('No <ul> element found. Retrying...');
+              // console.log('No <ul> element found. Retrying...');
               setTimeout(() => observeListChanges(db), 1000);
               return;
             }
 
-            const observer = new MutationObserver(() => {
-              console.log('<ul> element changed. Updating <li> elements...');
-              updateLiElements(db);
-            });
+            const observer = new MutationObserver(throttle(() => {
+              // console.log('<ul> element changed. Updating <li> elements...');
+              updateLiElements();
+            }, 500)); // Throttle updates to 500ms
 
             observer.observe(ulElement, { childList: true, subtree: true });
-            console.log('Started observing <ul> element changes.');
-            updateLiElements(db); // Initial check for existing <li> elements
+            // console.log('Started observing <ul> element changes.');
           }
 
-          // Update <li> elements with labels from the IndexedDB
-          function updateLiElements(db) {
-            console.log('Updating <li> elements with labels...');
+          // Update <li> elements with labels from the cache
+          function updateLiElements() {
+            // console.log('Updating <li> elements with labels...');
             const liElements = document.querySelectorAll('ul.msg-conversations-container__conversations-list > li');
 
             liElements.forEach(li => {
@@ -1129,134 +1344,115 @@ export const updateLabelTags = (view) => {
               
               if (imgSrc && nameTag) {
                 const nameContent = nameTag.textContent.trim();
-                console.log('Found <img> element with src:', imgSrc);
+                const labelData = labelCache[imgSrc]; // Get label data from cache
 
-                // Fetch label data from IndexedDB based on the code
-                const transaction = db.transaction(storeName, 'readonly');
-                const store = transaction.objectStore(storeName);
-                const getRequest = store.get(imgSrc); // Check directly with imgSrc as the key
-
-                getRequest.onsuccess = (event) => {
-                  const labelData = event.target.result;
-                  console.log('Fetched label data from IndexedDB:', labelData);
-
-                  // Compare the img src and the code in the database
-                  if (labelData && labelData.code === imgSrc && nameContent === labelData.codeName) {
-                    console.log('Matching code found. Adding labels to <li>...');
-                    addLabelsToContent(li, labelData); // Add the labels to the content div
-                  } else {
-                    console.log('No matching code found for img src:', imgSrc);
-                  }
-                };
-
-                getRequest.onerror = (error) => {
-                  console.error('Failed to retrieve label from IndexedDB:', error);
-                };
-              } else {
-                console.log('No <img> element found within <li>.');
+                if (labelData && labelData.codeName === nameContent) {
+                  // console.log('Matching code found. Adding labels to <li>...');
+                  addLabelsToContent(li, labelData); // Add the labels to the content div
+                }
               }
             });
           }
 
           // Add multiple labels to the content div within the <li> element
           function addLabelsToContent(li, labelData) {
-            console.log('Adding labels to content div:', labelData);
-
             const parentDiv = li.querySelector('.msg-conversation-card__content--selectable');
-            if (!parentDiv) {
-              console.log('Content div not found in <li>.');
-              return;
-            }
+            if (!parentDiv) return;
 
-            // Check if the tag container with the same ID already exists
             const roleTagContainerId = \`label-tag-\${labelData.code}\`;
             let roleTagContainer = parentDiv.querySelector(\`#\${CSS.escape(roleTagContainerId)}\`);
+
             if (!roleTagContainer) {
-              // Create a container for the role tags if not already present
               roleTagContainer = document.createElement('div');
               roleTagContainer.id = roleTagContainerId;
               roleTagContainer.style.display = 'flex';
               roleTagContainer.style.alignItems = 'center';
-              roleTagContainer.style.gap = '5px'; // Set the gap between tags
-              roleTagContainer.classList.add('role-tag-container');
+              roleTagContainer.style.gap = '5px';
               parentDiv.insertAdjacentElement('afterbegin', roleTagContainer);
-              parentDiv.style.height = '130px'; // Adjust the height
+              parentDiv.style.height = '110px';
             }
 
-            // Iterate over the labels array and add each as a separate tag
+            // Iterate over the labels and add them if not already present
             labelData.labels.forEach(label => {
-              // Check if a tag with the same name already exists in the container
-              const existingTag = Array.from(roleTagContainer.children).some(tag => tag.textContent.includes(label.name));
-              if (existingTag) {
-                console.log('Label tag already exists:', label.name);
-                return;
+              if (!Array.from(roleTagContainer.children).some(tag => tag.textContent.includes(label.name))) {
+                const roleSpanContainer = document.createElement('div');
+                roleSpanContainer.style.display = 'flex';
+                roleSpanContainer.style.alignItems = 'center';
+                roleSpanContainer.style.padding = '3px 6px';
+                roleSpanContainer.style.borderRadius = '5px';
+                roleSpanContainer.style.backgroundColor = '#f6f6f6';
+                roleSpanContainer.style.color = label.color;
+                roleSpanContainer.style.fontSize = '11px';
+                roleSpanContainer.style.marginRight = '5px';
+
+                const roleSpan = document.createElement('span');
+                roleSpan.textContent = label.name;
+
+                const closeButton = document.createElement('button');
+                closeButton.style.background = 'none';
+                closeButton.style.border = 'none';
+                closeButton.style.cursor = 'pointer';
+                closeButton.style.padding = '0';
+                closeButton.style.marginLeft = '5px';
+                closeButton.style.display = 'none';
+                const svgNS = "http://www.w3.org/2000/svg";
+const svgElement = document.createElementNS(svgNS, 'svg');
+svgElement.setAttribute('width', '7');
+svgElement.setAttribute('height', '7');
+svgElement.setAttribute('viewBox', '0 0 7 7');
+
+// Create <path> element for the SVG
+const pathElement = document.createElementNS(svgNS, 'path');
+pathElement.setAttribute('d', 'M6.81862 5.96446C7.06046 6.20653 7.06046 6.58309 6.81862 6.82517C6.6977 6.94621 6.5499 7 6.38868 7C6.22745 7 6.07965 6.94621 5.95873 6.82517L3.5 4.36407L1.04127 6.82517C0.920346 6.94621 0.772553 7 0.611324 7C0.450096 7 0.302303 6.94621 0.181382 6.82517C-0.0604607 6.58309 -0.0604607 6.20653 0.181382 5.96446L2.64012 3.50336L0.181382 1.04227C-0.0604607 0.800192 -0.0604607 0.423631 0.181382 0.181556C0.423225 -0.0605187 0.799424 -0.0605187 1.04127 0.181556L3.5 2.64265L5.95873 0.181556C6.20058 -0.0605187 6.57677 -0.0605187 6.81862 0.181556C7.06046 0.423631 7.06046 0.800192 6.81862 1.04227L4.35988 3.50336L6.81862 5.96446Z');
+pathElement.setAttribute('fill', 'black');
+
+// Append the <path> to the <svg>
+svgElement.appendChild(pathElement);
+
+// Append the <svg> to the button
+closeButton.appendChild(svgElement);
+
+                closeButton.onclick = async () => {
+      try {
+        // console.log('Removing label:', label.name);
+
+        // Remove the label from the DOM
+        
+
+        // Remove the label from the database
+        const db = await new Promise((resolve, reject) => {
+          const request = indexedDB.open('LabelsDB', 1);
+          request.onsuccess = (event) => resolve(event.target.result);
+          request.onerror = (error) => reject(error);
+        });
+
+        const transaction = db.transaction('codesStore', 'readwrite');
+        const store = transaction.objectStore('codesStore');
+        store.delete(labelData.code);
+
+        transaction.oncomplete = () => {
+          // console.log('Label removed from IndexedDB:', label.name);
+
+          // Send updated information to Electron
+          roleSpanContainer.remove();
+          window.electron.removeLabel(label.name, labelData.code, labelData.codeName);
+        };
+
+        transaction.onerror = (error) => {
+          console.error('Failed to remove label from IndexedDB:', error);
+        };
+      } catch (error) {
+        console.error('Error removing label:', error);
+      }
+    };
+
+                roleSpanContainer.appendChild(roleSpan);
+                roleSpanContainer.appendChild(closeButton);
+                roleTagContainer.appendChild(roleSpanContainer);
+
+                roleSpanContainer.onmouseenter = () => (closeButton.style.display = 'flex');
+                roleSpanContainer.onmouseleave = () => (closeButton.style.display = 'none');
               }
-
-              // Create the label tag container
-              const roleSpanContainer = document.createElement('div');
-              roleSpanContainer.style.display = 'flex';
-              roleSpanContainer.style.alignItems = 'center';
-              roleSpanContainer.style.padding = '5px 10px';
-              roleSpanContainer.style.borderRadius = '5px';
-              roleSpanContainer.style.backgroundColor = label.color;
-              roleSpanContainer.style.color = '#fff';
-              roleSpanContainer.style.fontSize = '12px';
-              roleSpanContainer.style.marginRight = '5px';
-              roleSpanContainer.classList.add('label-tag');
-              roleSpanContainer.style.position = 'relative'; // To position the close button
-
-              // Create the label text
-              const roleSpan = document.createElement('span');
-              roleSpan.textContent = label.name;
-              roleSpan.style.marginRight = '8px';
-
-              // Create the close button with SVG
-              const closeButton = document.createElement('button');
-              closeButton.style.background = 'none';
-              closeButton.style.border = 'none';
-              closeButton.style.cursor = 'pointer';
-              closeButton.style.padding = '0';
-              closeButton.style.marginLeft = '5px';
-              closeButton.style.display = 'none'; // Initially hidden
-              closeButton.style.position = 'absolute';
-              closeButton.style.right = '5px';
-              closeButton.style.top = '50%';
-              closeButton.style.transform = 'translateY(-50%)';
-              closeButton.style.transition = 'opacity 0.3s ease'; // Smooth transition
-
-              // Add the SVG to the button
-              const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-              svgElement.setAttribute("width", "7");
-              svgElement.setAttribute("height", "7");
-              svgElement.setAttribute("viewBox", "0 0 7 7");
-              svgElement.setAttribute("fill", "none");
-
-              const pathElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
-              pathElement.setAttribute("d", "M6.81862 5.96446C7.06046 6.20653 7.06046 6.58309 6.81862 6.82517C6.6977 6.94621 6.5499 7 6.38868 7C6.22745 7 6.07965 6.94621 5.95873 6.82517L3.5 4.36407L1.04127 6.82517C0.920346 6.94621 0.772553 7 0.611324 7C0.450096 7 0.302303 6.94621 0.181382 6.82517C-0.0604607 6.58309 -0.0604607 6.20653 0.181382 5.96446L2.64012 3.50336L0.181382 1.04227C-0.0604607 0.800192 -0.0604607 0.423631 0.181382 0.181556C0.423225 -0.0605187 0.799424 -0.0605187 1.04127 0.181556L3.5 2.64265L5.95873 0.181556C6.20058 -0.0605187 6.57677 -0.0605187 6.81862 0.181556C7.06046 0.423631 7.06046 0.800192 6.81862 1.04227L4.35988 3.50336L6.81862 5.96446Z");
-              pathElement.setAttribute("fill", "white");
-
-              svgElement.appendChild(pathElement);
-              closeButton.appendChild(svgElement);
-
-              // Close button click event
-              closeButton.onclick = () => {
-                console.log('Label removed:', label.name);
-                roleSpanContainer.remove(); // Remove the label from the DOM
-                window.electron.removeLabel(label.name, labelData.code, labelData.codeName); // Call the Electron function
-              };
-
-              // Append elements
-              roleSpanContainer.appendChild(roleSpan);
-              roleSpanContainer.appendChild(closeButton);
-              roleTagContainer.appendChild(roleSpanContainer);
-
-              // Show the close button on hover
-              roleSpanContainer.onmouseenter = () => {
-                closeButton.style.display = 'flex'; // Show the button
-              };
-              roleSpanContainer.onmouseleave = () => {
-                closeButton.style.display = 'none'; // Hide the button
-              };
             });
           }
 
@@ -1284,215 +1480,95 @@ export const updateLabelTags = (view) => {
 };
 
 
-
-
-
-
-
-export const handleDropdownClick = (view) => {
-  const jsCode = `
-    (function() {
-      // Function to set opacity and trigger click on the button
-      function triggerDropdownActions() {
-        // Find the parent dropdown container
-        const dropdownContainer = document.querySelector('.artdeco-dropdown.msg-thread-actions__dropdown');
-        console.log(dropdownContainer)
-
-        if (dropdownContainer) {
-          // Find the button within the dropdown container
-          const button = dropdownContainer.querySelector('.msg-thread-actions__control');
-
-          // Find the specific dropdown content inside the container
-          const dropdownContent = dropdownContainer.querySelector('.msg-thread-actions__dropdown-options.artdeco-dropdown__content');
-
-          if (dropdownContent) {
-            // Set the opacity of the dropdown content to 0
-            dropdownContent.style.opacity = '0';
-            console.log('Dropdown content opacity set to 0.');
-
-            // Trigger a click on the button
-            if (button) {
-              button.click();
-              console.log('Dropdown button clicked.');
-
-              // After button click, wait briefly then search for the "Archive" option
-              setTimeout(() => {
-                const archiveOption = Array.from(dropdownContent.querySelectorAll('div'))
-                  .find(div => div.textContent.trim() === 'Archive');
-
-                if (archiveOption) {
-                  archiveOption.click();
-                  console.log('Archive option clicked.');
-                } else {
-                  console.log('Archive option not found.');
+export const scriptTo = (view) => {
+  if (view) {
+    view.executeJavaScript(`
+      (function() {
+        // Function to check for the "Archive" list item and click it
+        function checkAndClickArchive() {
+          function pollForUl() {
+            const activeConversation = document.querySelector('.msg-conversations-container__convo-item-link--active');
+            if (activeConversation) {
+              const inboxShortcuts = activeConversation.nextElementSibling.querySelector('.msg-thread-actions__dropdown-options--inbox-shortcuts');
+              
+              if (inboxShortcuts) {
+                const children = inboxShortcuts.querySelector('.artdeco-dropdown__content-inner');
+                const ul = children.getElementsByTagName('ul')[0];
+                if (ul) {
+                  
+                    const archiveItem = Array.from(ul.querySelectorAll('div')).find(item => 
+                      item.textContent.includes('Archive')
+                      );
+                    
+                    if (archiveItem) {
+                      archiveItem.click();
+                      console.log('Archive item clicked');
+                    } else {
+                      console.log('Archive item not found');
+                    }
                 }
-              }, 500); // Adjust timeout as needed
+                else{
+                setTimeout(pollForUl, 1000);
+                }
+              } else {
+                console.log('Inbox shortcuts not found');
+                setTimeout(pollForUl, 1000);
+              }
             } else {
-              console.log('Button not found in dropdown container.');
+              console.log('Active conversation not found');
             }
-          } else {
-            console.log('Dropdown content not found inside the container.');
+            // Poll again after a delay
+            
           }
-        } else {
-          console.log('Dropdown container not found.');
+
+          pollForUl();  // Start polling for the "Archive" item
         }
-      }
 
-      // Function to handle keydown events
-      function handleKeyDown(event) {
-        // Check for Cmd + Shift + A (Mac) or Ctrl + Shift + A (Windows/Linux)
-        if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'a') {
-          event.preventDefault();
-          console.log('Cmd + Shift + A detected.');
-          triggerDropdownActions();
+        // Function to continuously check for the active conversation and click the button
+        function checkAndClick() {
+          const activeConversation = document.querySelector('.msg-conversations-container__convo-item-link--active');
+          if (activeConversation) {
+            console.log('Active conversation found');
+
+            const button = activeConversation.nextElementSibling.querySelector('button.msg-thread-actions__control');
+            button.nextElementSibling.style.opacity = '0';
+            if (button) {
+              button.click();  // Open the dropdown
+              console.log('Button clicked');
+              setTimeout(checkAndClickArchive, 500);  // Delay to allow dropdown to appear
+            } else {
+              console.log('Button not found');
+            }
+            
+            return true;  // Stop checking once the active conversation is found and button is clicked
+          }
+
+          return false;  // Active conversation not yet found
         }
-      }
 
-      // Attach the event listener for keydown
-      document.addEventListener('keydown', handleKeyDown);
-      console.log('Event listener for Cmd + Shift + A attached.');
-    })();
-  `;
+        // Function to handle keyboard shortcuts
+        function handleKeyboardEvent(event) {
+          if (event.metaKey && event.shiftKey && event.code === 'KeyA') {
+            console.log('Cmd + Shift + A pressed');
+            checkAndClick();  // Trigger the action on keyboard shortcut
+          }
+        }
 
-  // Execute the JavaScript in the webview
-  view
-    .executeJavaScript(jsCode)
-    .then(() => {
-      console.log("Custom JS injected successfully.");
-    })
-    .catch((err) => {
-      console.error("Failed to inject custom JS:", err);
+        // Add a global keyboard event listener
+        document.addEventListener('keydown', handleKeyboardEvent);
+
+        console.log('Keyboard event listener added for Cmd + Shift + A');
+      })();
+    `).then(() => {
+      console.log('Script with keyboard shortcut listener injected');
+    }).catch((err) => {
+      console.error('Failed to inject script with keyboard shortcut listener:', err);
     });
-};
+  }
+}
 
 
 
-
-
-// export const monitorTitleBarChanges = (view) => {
-//   if (view) {
-//     view
-//       .executeJavaScript(
-//         `
-//           (function () {
-//             // Keydown event listener to detect Cmd + Shift + A
-//             document.addEventListener('keydown', (event) => {
-//               if (event.metaKey && event.shiftKey && event.key === 'a') {
-//                 event.preventDefault();
-//                 console.log('Cmd + Shift + A detected');
-//                 checkForTitleBar(); // Start checking for the title bar div when keys are pressed
-//               }
-//             });
-
-//             // Function to start observing the entire document for changes
-//             function startObservingUI() {
-//               const observer = new MutationObserver((mutationsList) => {
-//                 mutationsList.forEach((mutation) => {
-//                   // Check if the mutation added nodes or if any changes occurred
-//                   if (mutation.addedNodes.length > 0 || mutation.type === 'childList') {
-//                     // Continuously check for the msg-title-bar__title-bar-title
-//                     checkForTitleBar();
-//                   }
-//                 });
-//               });
-
-//               // Start observing the entire document body for child changes
-//               observer.observe(document.body, { childList: true, subtree: true });
-//               // console.log('Started observing UI changes.');
-//             }
-
-//             // Function to continuously check for the target title bar div
-//             function checkForTitleBar() {
-//               const titleBarDiv = document.querySelector('.msg-title-bar__title-bar-title');
-
-//               if (titleBarDiv) {
-//                 // console.log('Found the title bar div:', titleBarDiv);
-//                 handleTitleBarInteraction(titleBarDiv); // Handle further interaction with the title bar div
-//               } else {
-//                 // console.log('Title bar div not found, waiting for changes...');
-//               }
-//             }
-
-//             // Function to handle interactions within the title bar div
-//             function handleTitleBarInteraction(titleBarDiv) {
-//               const dropdownButton = titleBarDiv.querySelector('.artdeco-dropdown--placement-bottom');
-
-//               if (dropdownButton) {
-//                 console.log('Dropdown button found within the title bar div, clicking...');
-//                 dropdownButton.click();
-//                 observeDropdownChanges(titleBarDiv); // Start observing dropdown changes within the div
-//               } else {
-//                 console.log('Dropdown button not found within the title bar div.');
-//               }
-//             }
-
-//             // Function to observe changes in the dropdown container within the title bar div
-//             function observeDropdownChanges(titleBarDiv) {
-//               const targetContainer = titleBarDiv.querySelector('.msg-thread-actions__dropdown-container');
-
-//               if (!targetContainer) {
-//                 // console.log('Dropdown container not found within the title bar div, retrying...');
-//                 setTimeout(() => observeDropdownChanges(titleBarDiv), 1000); // Retry observing every 1 second until found
-//                 return;
-//               }
-
-//               // Set up a MutationObserver to monitor the target container within the title bar div
-//               const observer = new MutationObserver((mutationsList) => {
-//                 mutationsList.forEach((mutation) => {
-//                   // Check if an <ul> was added to the DOM
-//                   mutation.addedNodes.forEach((node) => {
-//                     if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'UL') {
-//                       // console.log('UL element added to DOM within the title bar div:', node);
-//                       hideULAndClick(node);
-//                     }
-//                   });
-//                 });
-//               });
-
-//               observer.observe(targetContainer, { childList: true, subtree: true });
-//               // console.log('Started observing dropdown container for changes within the title bar div.');
-//             }
-
-//             // Function to hide the <ul> element and click on the specific <div> inside it
-//             function hideULAndClick(ulElement) {
-//               ulElement.style.visibility = 'hidden'; // Hide the <ul> element
-//               // console.log('UL element visibility set to hidden within the title bar div.');
-
-//               // Find the target div within the <ul>
-//               const targetDiv = ulElement.querySelector(
-//                 '.msg-thread-actions__dropdown-option[data-view-name="message-toolbar-dropdown-toggle-archive"]'
-//               );
-
-//               if (targetDiv) {
-//                 // console.log('Target div found within the UL, performing click:', targetDiv);
-//                 targetDiv.click(); // Click on the specific <div>
-//               } else {
-//                 // console.log('Target div not found in the UL within the title bar div, retrying...');
-//               }
-//             }
-
-//             // Start observing the UI for changes
-//             startObservingUI();
-//           })();
-//         `
-//       )
-//       .then(() => {
-//         console.log(
-//           `Started monitoring changes for WebView ${view.getAttribute(
-//             "data-id"
-//           )}`
-//         );
-//       })
-//       .catch((err) =>
-//         console.error(
-//           `Failed to monitor changes for WebView ${view.getAttribute(
-//             "data-id"
-//           )}:`,
-//           err
-//         )
-//       );
-//   }
-// };
 
 
 

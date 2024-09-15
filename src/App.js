@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { AccountsProvider } from "./Linkedin/AccountsProvider";
 import { SheetsProvider } from "./Sheets/SheetsProvider";
 import { LabelsProvider } from "./auth/LabelsProvider";
+import { ShortcutProvider } from "./auth/ShortcutProvider";
 // import { SheetsProvider } from "./auth/SheetsProvider";
 
 const { Content } = Layout;
@@ -17,22 +18,24 @@ function App() {
     <ThemeProvider theme={theme}>
       <AccountsProvider>
         <ProfileProvider>
+          <ShortcutProvider>
             <SheetsProvider>
               <LabelsProvider>
-              <Layout>
-                <Content
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    height: "100vh",
-                  }}
-                >
-                  <Main />
-                </Content>
-              </Layout>
+                <Layout>
+                  <Content
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      height: "100vh",
+                    }}
+                  >
+                    <Main />
+                  </Content>
+                </Layout>
               </LabelsProvider>
             </SheetsProvider>
+          </ShortcutProvider>
         </ProfileProvider>
       </AccountsProvider>
     </ThemeProvider>

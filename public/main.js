@@ -28,7 +28,7 @@ function createWindow() {
     fullscreenable: true,
   });
 
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
   const indexPath = path.join(__dirname, '../build/index.html');
   mainWindow.loadURL(`file://${indexPath}`);
   // mainWindow.loadURL('https://locolhost:3000')
@@ -362,4 +362,10 @@ function sendProfileNotification(url, id) {
 ipcMain.on('add-label',(event, {code, id, name})=>{
   console.log(`the code for the account id is ${code} and id ${id}`);
   mainWindow.webContents.send('open-label', {code, id, name});
+})
+
+
+ipcMain.on('remove-label', (event, {labelName, code, name})=>{
+  console.log(`rmeoved the label ${code} and ${labelName} and ${name}`);
+  mainWindow.webContents.send('removed-label', {labelName, code, name});
 })
