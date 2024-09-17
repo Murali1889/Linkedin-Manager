@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useContext, useState } from "react";
 import { useAccounts } from "./AccountsProvider"; // Accessing accounts context
 import PersonOffIcon from "@mui/icons-material/PersonOff"; // Import the icon for the empty state
-import { injectTryGetAccountName, injectShortcutObserver, goToProfile, injectProfileView, updateRoles, updateList, injectCustomJS, addLabel, updateLabels, updateLabelTags , storeShortcutsInIndexedDB, scriptTo } from "../Scripts/linkedinScripts";
+import { injectTryGetAccountName, goToProfile, injectShortcutObserver, injectProfileView, injectStayOnMessagingPage,  updateRoles, updateList, injectCustomJS, addLabel, updateLabels, updateLabelTags , storeShortcutsInIndexedDB, scriptTo } from "../Scripts/linkedinScripts";
 import { ProfileContext } from "../auth/ProfileProvider";
 import { useLabels } from "../auth/LabelsProvider";
 import { useShortcuts } from "../auth/ShortcutProvider";
@@ -35,9 +35,10 @@ const LinkedinWebviews = () => {
       view.addEventListener("dom-ready", () => {
 
         if (type === "messaging") {
-          // view.openDevTools();
+          view.openDevTools();
           injectTryGetAccountName(view, accountId, changeName);
           // changeUI(view)
+          injectStayOnMessagingPage(view)
           updateLabels(labels, view)
           injectShortcutObserver(view, shortcuts);
           goToProfile(view, accountId);

@@ -28,9 +28,11 @@ import {
   ExitIcon, // Assuming ExitIcon is available; if not, use a suitable icon for logout
 } from "@radix-ui/react-icons"; // Import the settings and delete icons
 import { useAccounts } from "../Linkedin/AccountsProvider"; // Import AccountsContext
+import { useShortcuts } from "../auth/ShortcutProvider";
 
 const Settings = () => {
   const [loading, setLoading] = useState(false);
+  const { setIsOpenListDialog } = useShortcuts()
   const { accounts: linkedinAccounts, deleteAccount: deleteLinkedinAccount, clearAllAccounts: clearAllLinkedinAccounts } = useAccounts();
 
   const handleClearAllAccounts = async () => {
@@ -59,7 +61,7 @@ const Settings = () => {
     try {
       if (type === "linkedin") {
         await deleteLinkedinAccount(id);
-      } 
+      }
     } catch (error) {
       console.error(`Failed to delete ${type} account:`, error);
     }
@@ -165,7 +167,13 @@ const Settings = () => {
                 </AlertDialogContent>
               </AlertDialog>
             </div>
+            <div className="mt-4">
+              <Button onClick={() => setIsOpenListDialog(true)} color='primary'>
+                Show Commands
+              </Button>
+            </div>
           </div>
+
         </SheetContent>
       </Sheet>
     </div>

@@ -424,10 +424,12 @@ export const injectTryGetAccountName = (view, id, changeName) => {
   const jsCode = `
       (function() {
         function tryGetAccountName() {
+          // showLoadingScreen(); // Show loading screen
           const imgTag = document.querySelector("img.global-nav__me-photo");
           if (imgTag && imgTag.alt) {
             localStorage.setItem('name', imgTag.alt);
             customizeLinkedIn();
+            hideLoadingScreen(); // Hide loading screen
             return imgTag.alt;
           } else {
             setTimeout(tryGetAccountName, 500);
@@ -461,20 +463,15 @@ export const injectTryGetAccountName = (view, id, changeName) => {
         }
   
         function setupContinuousCustomization() {
-          // Set up a MutationObserver to keep customizing the UI
           const observer = new MutationObserver(() => {
             customizeLinkedIn();
           });
-  
-          // Observe the entire document for changes
           observer.observe(document.body, {
             childList: true,
             subtree: true,
             attributes: true,
             characterData: true,
           });
-  
-          // Initial customization call
           customizeLinkedIn();
         }
   
@@ -486,7 +483,6 @@ export const injectTryGetAccountName = (view, id, changeName) => {
               removeReturnToMessagesButton();
             }
           });
-  
           observer.observe(document, { subtree: true, childList: true });
         }
   
@@ -521,9 +517,33 @@ export const injectTryGetAccountName = (view, id, changeName) => {
             button.remove();
           }
         }
-  
+
+        function showLoadingScreen() {
+          let loadingScreen = document.getElementById('loading-screen');
+          if (!loadingScreen) {
+            loadingScreen = document.createElement('div');
+            loadingScreen.id = 'loading-screen';
+            loadingScreen.style.position = 'fixed';
+            loadingScreen.style.inset = '0';
+            loadingScreen.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+            loadingScreen.style.zIndex = '999999999';
+            loadingScreen.style.display = 'flex';
+            loadingScreen.style.flexDirection = 'column';
+            loadingScreen.style.alignItems = 'center';
+            loadingScreen.style.justifyContent = 'center';
+            document.body.appendChild(loadingScreen);
+          }
+        }
+
+        function hideLoadingScreen() {
+          const loadingScreen = document.getElementById('loading-screen');
+          if (loadingScreen) {
+            loadingScreen.remove();
+          }
+        }
+
         localStorage.setItem('namesList', JSON.stringify([]));
-        setupContinuousCustomization(); // Start observing and customizing continuously
+        setupContinuousCustomization();
         return tryGetAccountName();
       })();
     `;
@@ -538,83 +558,118 @@ export const injectTryGetAccountName = (view, id, changeName) => {
               `
               (function() {
                 const name = localStorage.getItem('name');
-                // console.log(name)
                 return name;
               })();
             `
             )
             .then((name) => {
               if (name) {
-                clearInterval(interval); // Stop the interval once the name is found
+                clearInterval(interval);
                 resolve(name);
-              } else {
-                // console.log(`Name not found yet for id ${id}, retrying...`);
               }
             })
             .catch((error) => {
-              clearInterval(interval); // Stop the interval on error
+              clearInterval(interval);
               reject(error);
             });
-        }, 1000); // Check every 1 second
+        }, 1000);
       });
     })
     .then((name) => {
       changeName({ id: id, newName: name });
-      // console.log(`Account name for id ${id}: ${name}`);
     })
     .catch((error) => {
       console.error(`Failed to get account name for id ${id}: `, error);
     });
 };
+
 export const storeShortcutsInIndexedDB = (view, shortcuts) => {
-  console.log(shortcuts)
   if (view && shortcuts) {
-    console.log(view);
-    console.log(shortcuts)
     view.executeJavaScript(`
       (function() {
-        console.log('Storing shortcuts in IndexedDB');
-        
-        // Open IndexedDB connection
-        const request = indexedDB.open('ShortcutsDB', 1);
-        
+        console.log('Attempting to store shortcuts in IndexedDB');
+
+        // Open IndexedDB connection with version incremented to ensure onupgradeneeded runs
+        const request = indexedDB.open('ShortcutsDB', 2); // Increment version to force upgrade
+
         request.onupgradeneeded = function(event) {
           const db = event.target.result;
+          console.log('Upgrading database...');
+
+          // Check and create the object store if not present
           if (!db.objectStoreNames.contains('shortcuts')) {
             db.createObjectStore('shortcuts', { keyPath: 'id' });
+            console.log('Object store "shortcuts" created.');
+          } else {
+            console.log('Object store "shortcuts" already exists.');
           }
         };
 
         request.onsuccess = function(event) {
           const db = event.target.result;
-          const transaction = db.transaction(['shortcuts'], 'readwrite');
+          console.log('Database opened successfully:', db);
+
+          // Ensure object store exists before attempting a transaction
+          if (!db.objectStoreNames.contains('shortcuts')) {
+            console.error('Object store "shortcuts" not found.');
+            db.close();
+            return;
+          }
+
+          // Start a readwrite transaction to store shortcuts
+          const transaction = db.transaction('shortcuts', 'readwrite');
           const store = transaction.objectStore('shortcuts');
-          
-          // Clear old shortcuts
-          store.clear();
-          
-          // Store new shortcuts
-          Object.keys(${JSON.stringify(shortcuts)}).forEach((key) => {
-            console.log(key);
-            store.add({ id: key, text: ${JSON.stringify(shortcuts)}[key] });
-          });
+
+          // Clear existing shortcuts
+          const clearRequest = store.clear();
+
+          clearRequest.onsuccess = function() {
+            console.log('Old shortcuts cleared successfully.');
+
+            // Add new shortcuts
+            ${JSON.stringify(shortcuts)}.forEach((shortcut) => {
+              const addRequest = store.add(shortcut);
+              addRequest.onsuccess = function() {
+                console.log('Shortcut added:', shortcut);
+              };
+              addRequest.onerror = function(event) {
+                console.error('Failed to add shortcut:', event.target.error);
+              };
+            });
+          };
+
+          clearRequest.onerror = function(event) {
+            console.error('Failed to clear old shortcuts:', event.target.error);
+          };
 
           transaction.oncomplete = function() {
-            console.log('Shortcuts stored successfully in IndexedDB');
+            console.log('All shortcuts stored successfully in IndexedDB.');
+          };
+
+          transaction.onerror = function(event) {
+            console.error('Transaction failed:', event.target.error);
           };
         };
 
-        request.onerror = function() {
-          console.error('Failed to open IndexedDB');
+        request.onerror = function(event) {
+          console.error('Failed to open IndexedDB:', event.target.error);
+        };
+
+        request.onblocked = function() {
+          console.warn('Database open request is blocked. Please close other connections.');
         };
       })();
-    `).then(() => {
-      console.log('Shortcuts injected and stored into IndexedDB');
-    }).catch((err) => {
-      console.error('Failed to store shortcuts into IndexedDB:', err);
-    });
+    `)
+      .then(() => {
+        console.log('Shortcuts successfully injected and stored in IndexedDB');
+      })
+      .catch((err) => {
+        console.error('Failed to inject and store shortcuts in IndexedDB:', err);
+      });
   }
 };
+
+
 
 export const injectShortcutObserver = (view) => {
   if (view) {
@@ -622,11 +677,26 @@ export const injectShortcutObserver = (view) => {
       (function() {
         console.log('Observing message box for input and fetching shortcuts from IndexedDB');
 
+        let cachedShortcuts = []; // Cache to store shortcuts fetched from IndexedDB
+
+        function replaceName(text) {
+          const name = getName();
+          console.log('Replacing name in text:', text);
+          return text.replace(/<<name>>/g, name);
+        }
+
+        function getName() {
+          const nameElement = document.querySelector('h2.msg-entity-lockup__entity-title');
+          const name = nameElement ? nameElement.textContent.trim() : "there";
+          console.log('Fetched name:', name);
+          return name;
+        }
+
         // Function to show the filtered shortcut list
         function showShortcutList(filteredCommands) {
           try {
             const existingList = document.getElementById('shortcut-list');
-            if (existingList) existingList.remove();  // Remove any existing list
+            if (existingList) existingList.remove(); // Remove any existing list
 
             const list = document.createElement('ul');
             list.id = 'shortcut-list';
@@ -643,7 +713,7 @@ export const injectShortcutObserver = (view) => {
 
             filteredCommands.forEach((shortcut) => {
               const listItem = document.createElement('li');
-              listItem.textContent = shortcut.id;
+              listItem.textContent = shortcut.title;
               listItem.style.padding = '8px 10px';
               listItem.style.cursor = 'pointer';
               listItem.style.borderBottom = '1px solid #ddd';
@@ -652,8 +722,9 @@ export const injectShortcutObserver = (view) => {
                 try {
                   const messageBox = document.querySelector('.msg-form__contenteditable p');
                   if (messageBox) {
-                    messageBox.textContent = shortcut.text;
+                    messageBox.textContent = replaceName(shortcut.content);
 
+                    // Trigger input events for LinkedIn
                     ['input', 'keyup', 'keydown'].forEach(eventType => {
                       const event = new Event(eventType, { bubbles: true });
                       messageBox.dispatchEvent(event);
@@ -679,63 +750,54 @@ export const injectShortcutObserver = (view) => {
           }
         }
 
-        // Function to fetch shortcuts from IndexedDB
-        function fetchShortcutsFromIndexedDB(input, callback) {
-          try {
-            const request = indexedDB.open('ShortcutsDB', 1);
-            
-            request.onsuccess = function(event) {
-              try {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('shortcuts')) {
-                  console.error('Object store "shortcuts" not found in IndexedDB');
-                  return;
-                }
-                const transaction = db.transaction(['shortcuts'], 'readonly');
-                const store = transaction.objectStore('shortcuts');
-                const shortcuts = [];
+        // Function to fetch all shortcuts from IndexedDB
+        function fetchShortcutsFromIndexedDB() {
+          const request = indexedDB.open('ShortcutsDB', 2); // Ensure version matches the latest
 
-                store.openCursor().onsuccess = function(event) {
-                  const cursor = event.target.result;
-                  if (cursor) {
-                    if (cursor.key.startsWith(input)) {
-                      shortcuts.push(cursor.value);
-                    }
-                    cursor.continue();
-                  } else {
-                    callback(shortcuts);
-                  }
-                };
+          request.onsuccess = function(event) {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('shortcuts')) {
+              console.error('Object store "shortcuts" not found in IndexedDB');
+              return;
+            }
 
-                store.openCursor().onerror = function() {
-                  console.error('Failed to fetch shortcuts from IndexedDB');
-                };
-              } catch (err) {
-                console.error('Failed during IndexedDB success handler:', err);
+            const transaction = db.transaction(['shortcuts'], 'readonly');
+            const store = transaction.objectStore('shortcuts');
+            const shortcuts = [];
+
+            store.openCursor().onsuccess = function(event) {
+              const cursor = event.target.result;
+              if (cursor) {
+                shortcuts.push(cursor.value);
+                cursor.continue();
+              } else {
+                cachedShortcuts = shortcuts; // Update cached shortcuts
+                console.log('Shortcuts fetched and cached:', cachedShortcuts);
               }
             };
 
-            request.onerror = function() {
-              console.error('Failed to open IndexedDB:', event);
+            store.openCursor().onerror = function() {
+              console.error('Failed to fetch shortcuts from IndexedDB');
             };
-          } catch (err) {
-            console.error('Failed to fetch shortcuts from IndexedDB:', err);
-          }
+          };
+
+          request.onerror = function() {
+            console.error('Failed to open IndexedDB:', event);
+          };
         }
 
-        // Function to observe input changes in the message box
+        // Function to handle input changes in the message box
         function handleInputChanges(mutations) {
           try {
             mutations.forEach((mutation) => {
               if (mutation.type === 'characterData') {
                 const inputText = mutation.target.textContent.trim();
                 if (inputText.startsWith('/')) {
-                  const command = inputText.slice(1);  // Remove the '/' prefix
-                  fetchShortcutsFromIndexedDB(command, (shortcuts) => {
-                    if (shortcuts.length > 0) {
-                      showShortcutList(shortcuts);
-                    }
-                  });
+                  const command = inputText.slice(1); // Remove the '/' prefix
+                  const filteredCommands = cachedShortcuts.filter(shortcut => shortcut.title.startsWith(command));
+                  if (filteredCommands.length > 0) {
+                    showShortcutList(filteredCommands);
+                  }
                 } else {
                   const existingList = document.getElementById('shortcut-list');
                   if (existingList) existingList.remove();
@@ -747,63 +809,81 @@ export const injectShortcutObserver = (view) => {
           }
         }
 
-        // Continuously check for the message box and add observer
-         // Observe the <p> tag inside the message box for changes
-            function addObserver() {
-              const pTag = document.querySelector('.msg-form__contenteditable p');
+        // Function to observe input changes on the <p> tag
+        function addObserver(pTag) {
+          if (pTag) {
+            const observer = new MutationObserver(handleInputChanges);
+            observer.observe(pTag, { characterData: true, subtree: true });
+            console.log('Observer added to <p> tag inside message box.');
+          }
+        }
+
+        // Function to monitor the message box parent element for changes and re-add the observer if <p> is removed
+        function monitorMessageBox() {
+          const messageBox = document.querySelector('.msg-form__contenteditable');
+          if (messageBox) {
+            const observer = new MutationObserver(() => {
+              const pTag = messageBox.querySelector('p');
               if (pTag) {
-                const observer = new MutationObserver(handleInputChanges);
-                observer.observe(pTag, { characterData: true, subtree: true });
-                console.log('Observer added to <p> tag inside message box.');
-                clearInterval(checkInterval); // Stop checking once the <p> tag is found
+                console.log('Re-adding observer for <p> tag');
+                addObserver(pTag);
               } else {
-                console.log('Message box <p> tag not found yet, continuing to check...');
+                console.log('<p> tag removed, waiting to re-attach observer...');
               }
+            });
+
+            observer.observe(messageBox, { childList: true, subtree: true });
+            console.log('Monitoring message box for changes to re-add <p> observer.');
+          }
+        }
+
+        // Set up a polling mechanism to fetch shortcuts from IndexedDB every 5 seconds
+        setInterval(fetchShortcutsFromIndexedDB, 5000);
+
+        // Check for the <p> tag every 500ms until found, then monitor it
+        const checkInterval = setInterval(() => {
+          const pTag = document.querySelector('.msg-form__contenteditable p');
+          if (pTag) {
+            addObserver(pTag);
+            clearInterval(checkInterval);
+            monitorMessageBox(); // Start monitoring the message box for changes
+          }
+        }, 500);
+
+        // Hide the list when clicking outside
+        document.addEventListener('click', (event) => {
+          const list = document.getElementById('shortcut-list');
+          if (list && !list.contains(event.target)) {
+            list.remove();
+            console.log('Shortcut list removed on outside click.');
+          }
+        });
+
+        // Prevent showing the list multiple times
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            const list = document.getElementById('shortcut-list');
+            if (list) {
+              list.remove();
+              console.log('Shortcut list removed on Escape key press.');
             }
+          }
+        });
 
-            // Check for the <p> tag every 500ms until found
-            const checkInterval = setInterval(addObserver, 500);
-
-            // Function to re-add the observer when necessary
-            function reAddObserver() {
-              clearInterval(checkInterval);
-              addObserver();
-            }
-
-            // Hide the list when clicking outside
-            document.addEventListener('click', (event) => {
-              const list = document.getElementById('shortcut-list');
-              if (list && !list.contains(event.target)) {
-                list.remove();
-                console.log('Shortcut list removed on outside click.');
-                reAddObserver();
-              }
-            });
-
-            // Prevent showing the list multiple times
-            document.addEventListener('keydown', (event) => {
-              if (event.key === 'Escape') {
-                const list = document.getElementById('shortcut-list');
-                if (list) {
-                  list.remove();
-                  console.log('Shortcut list removed on Escape key press.');
-                  reAddObserver();
-                }
-              }
-            });
-
-            // Ensure observer stays active and correctly handles inputs
-            document.addEventListener('input', () => {
-              reAddObserver();
-            });
+        // Fetch shortcuts initially
+        fetchShortcutsFromIndexedDB();
       })();
-    `).then(() => {
+    `)
+    .then(() => {
       console.log('Observer injected to WebView for monitoring input');
-    }).catch((err) => {
+    })
+    .catch((err) => {
       console.error('Failed to inject observer:', err);
     });
   }
 };
+
+
 
 export const goToProfile = (view, accountId) => {
   const jsCode = `
@@ -1570,6 +1650,82 @@ export const scriptTo = (view) => {
 
 
 
+export const injectStayOnMessagingPage = (view) => {
+  const jsCode = `
+    (function() {
+      // Function to show the "Get Back to Message Page" button
+      function showReturnToMessagesButton() {
+        let button = document.getElementById('return-to-messages-button');
+        if (!button) {
+          button = document.createElement('button');
+          button.id = 'return-to-messages-button';
+          button.textContent = 'Get Back to Message Page';
+          button.style.position = 'fixed';
+          button.style.bottom = '20px';
+          button.style.right = '20px';
+          button.style.zIndex = '999999';
+          button.style.padding = '10px 20px';
+          button.style.backgroundColor = '#0073b1'; // LinkedIn sky blue color
+          button.style.color = 'white';
+          button.style.border = 'none';
+          button.style.borderRadius = '5px';
+          button.style.cursor = 'pointer';
+          button.style.fontSize = '14px';
+          button.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.1)';
+  
+          button.addEventListener('click', function() {
+            window.location.href = 'https://www.linkedin.com/messaging/';
+          });
 
+          document.body.appendChild(button);
+        }
+      }
+
+      // Function to hide the "Get Back to Message Page" button when on messaging page
+      function hideReturnToMessagesButton() {
+        const button = document.getElementById('return-to-messages-button');
+        if (button) {
+          button.remove();
+        }
+      }
+
+      // Function to check the current URL and show or hide the button accordingly
+      function checkPage() {
+        if (!window.location.href.includes('/messaging/')) {
+          showReturnToMessagesButton();
+        } else {
+          hideReturnToMessagesButton();
+        }
+      }
+
+      // Observe URL changes to show/hide the button
+      function observeUrlChanges() {
+        const originalPushState = history.pushState;
+        const originalReplaceState = history.replaceState;
+
+        history.pushState = function() {
+          originalPushState.apply(history, arguments);
+          checkPage();
+        };
+
+        history.replaceState = function() {
+          originalReplaceState.apply(history, arguments);
+          checkPage();
+        };
+
+        window.addEventListener('popstate', checkPage);
+      }
+
+      // Initial setup
+      checkPage();
+      observeUrlChanges();
+    })();
+  `;
+
+  view.executeJavaScript(jsCode)
+    .catch((error) => {
+      console.error('Failed to inject stay-on-messaging-page code:', error);
+    });
+};
 
 

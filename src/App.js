@@ -8,6 +8,7 @@ import { AccountsProvider } from "./Linkedin/AccountsProvider";
 import { SheetsProvider } from "./Sheets/SheetsProvider";
 import { LabelsProvider } from "./auth/LabelsProvider";
 import { ShortcutProvider } from "./auth/ShortcutProvider";
+import AccordionList from "./components/shortcuts/AccordionList";
 // import { SheetsProvider } from "./auth/SheetsProvider";
 
 const { Content } = Layout;
@@ -32,6 +33,7 @@ function App() {
                   >
                     <Main />
                   </Content>
+                  <AccordionList/>
                 </Layout>
               </LabelsProvider>
             </SheetsProvider>
@@ -39,6 +41,8 @@ function App() {
         </ProfileProvider>
       </AccountsProvider>
     </ThemeProvider>
+
+
   );
 }
 
