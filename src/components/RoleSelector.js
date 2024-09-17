@@ -1,12 +1,11 @@
 import React, { useEffect, useContext, useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import CircularProgress from "@mui/material/CircularProgress"; // Import the CircularProgress component
+import CircularProgress from "@mui/material/CircularProgress";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { Checkbox } from "../components/ui/checkbox";
 import { ProfileContext } from "../auth/ProfileProvider";
-
 const RoleSelector = () => {
   const { profiles, checkedItems, setCheckedItems, loading } = useContext(ProfileContext);
   console.log(loading)
