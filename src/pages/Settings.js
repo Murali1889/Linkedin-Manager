@@ -69,7 +69,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="m-auto mt-5 mb-5 w-[80%]">
+    <div className="m-auto mt-auto mb-5 w-[80%]">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" className="flex items-center space-x-2 w-full">

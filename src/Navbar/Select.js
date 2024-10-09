@@ -1,40 +1,89 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '../components/ui/button';
-import LinkedInIcon from '@mui/icons-material/LinkedIn'; // LinkedIn Icon
-import DescriptionIcon from '@mui/icons-material/Description'; // Google Sheets Icon
-import { useAccounts } from '../Linkedin/AccountsProvider';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Briefcase, FileSpreadsheet, FileText, Menu, X } from 'lucide-react';
+import { useAccounts } from '../Linkedin/AccountsProvider'; // For switchNav logic
 
-const Select = () => {
+const LinkedinTabs = ({ setIsExpanded, isExpanded }) => {  // Accept setIsExpanded as a prop
   const { setSwitchNav, switchNav } = useAccounts();
 
-  const handleNavClick = (value)=>{
-    setSwitchNav(value)
-  }
+  const handleNavClick = (value) => {
+    setSwitchNav(value); // Use this to switch the active tab
+  };
+
+  const handleExpandClick = () => {
+    setIsExpanded(!isExpanded); // Toggle expanded state
+  };
 
   return (
-    <div className="space-y-4 w-[80%] flex flex-col gap-[5px] mx-auto mt-auto mb-0">
+    <div className="flex items-center w-full py-1 bg-white border-b border-gray-200 shadow-sm">
+
+      {/* Expand/Collapse Button (outside of tabs) */}
       <Button
-        variant="outline"
-        className={`flex items-center space-x-2 w-full ${
-          switchNav === 'linkedin' ? 'bg-blue-100' : 'bg-white'
-        }`} 
-        onClick={() => handleNavClick('linkedin')} 
+        variant="ghost"
+        size="icon"
+        className="ml-2 flex items-center justify-center"
+        onClick={handleExpandClick}
       >
-        <LinkedInIcon style={{ color: '#0A66C2' }} className="w-5 h-5" />
-        <span>LinkedIn</span>
+        {isExpanded ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       </Button>
-      <Button
-        variant="outline"
-        className={`flex items-center space-x-2 w-full ${
-          switchNav === 'sheets' ? 'bg-blue-100' : 'bg-white'
-        }`} 
-        onClick={() => handleNavClick('sheets')} 
-      >
-        <DescriptionIcon style={{ color: '#34A853' }} className="w-5 h-5" /> 
-        <span>Sheets</span>
-      </Button>
+
+      {/* Tabs */}
+      <Tabs value={switchNav} onValueChange={handleNavClick} className="flex-1 flex flex-col items-center">
+        <TabsList className="grid w-full grid-cols-3 px-4 py-1 bg-white h-[40px] items-center justify-center w-fit" style={{ background: "rgba(0,0,0,0.1)" }}>
+          {/* LinkedIn Tab */}
+          <TabsTrigger
+            value="linkedin"
+            className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 px-2 py-1 rounded-md transition duration-200 text-center"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className='mr-2'>
+              <g clip-path="url(#clip0_36_2)">
+                <path d="M12.4087 0H3.59127C1.60787 0 0 1.60787 0 3.59127V12.4087C0 14.3921 1.60787 16 3.59127 16H12.4087C14.3921 16 16 14.3921 16 12.4087V3.59127C16 1.60787 14.3921 0 12.4087 0Z" fill="#0B86CA" />
+                <path d="M4.43366 6.6505H6.09629V12.0152H4.43366V6.6505ZM5.2816 3.98476C5.47209 3.98476 5.65831 4.04118 5.81677 4.1469C5.97523 4.25262 6.09883 4.4029 6.17198 4.57878C6.24512 4.75466 6.26454 4.94827 6.22778 5.13518C6.19102 5.32209 6.09972 5.49392 5.96541 5.629C5.8311 5.76408 5.6598 5.85636 5.4731 5.89419C5.28641 5.93202 5.09269 5.91372 4.91639 5.84158C4.74009 5.76944 4.58911 5.6467 4.48248 5.48885C4.37586 5.331 4.31837 5.14511 4.31728 4.95462C4.31655 4.82752 4.34095 4.70153 4.38908 4.58389C4.43722 4.46625 4.50814 4.35929 4.59775 4.26916C4.68737 4.17902 4.79392 4.1075 4.91128 4.05869C5.02864 4.00988 5.1545 3.98475 5.2816 3.98476Z" fill="white" />
+                <path d="M7.16033 6.6505H8.76199V7.38206C8.92232 7.10844 9.15393 6.8835 9.43211 6.73123C9.71029 6.57896 10.0246 6.50509 10.3415 6.51749C12.0041 6.51749 12.3422 7.62591 12.3422 9.07239V12.0152H10.6796V9.42154C10.6796 8.80083 10.6796 7.99723 9.81499 7.99723C8.95042 7.99723 8.81741 8.67336 8.81741 9.37167V12.0263H7.15479L7.16033 6.6505Z" fill="white" />
+              </g>
+              <defs>
+                <clipPath id="clip0_36_2">
+                  <rect width="16" height="16" fill="white" />
+                </clipPath>
+              </defs>
+            </svg>
+
+            LinkedIn
+          </TabsTrigger>
+
+          {/* Google Sheets Tab */}
+          <TabsTrigger
+            value="sheets"
+            className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 px-2 py-1 rounded-md transition duration-200 text-center"
+          >
+            <svg width="12" height="17" viewBox="0 0 12 17" fill="none" xmlns="http://www.w3.org/2000/svg" className='mr-2'>
+              <path d="M12 4.53807V15.5012C12 16.0907 11.5218 16.5685 10.9327 16.5685H1.06734C0.47777 16.5685 1.64379e-09 16.0907 1.64379e-09 15.5012V1.06734C-3.23588e-05 0.47777 0.477737 0 1.06734 0H7.46193L12 4.53807Z" fill="#28B446" />
+              <path d="M8.08105 4.43945L12 6.05395V4.53805L9.77807 3.88201L8.08105 4.43945Z" fill="#219B38" />
+              <path d="M12 4.53806H8.52926C7.93965 4.53806 7.46191 4.06029 7.46191 3.47071V-7.62939e-06L12 4.53806Z" fill="#6ACE7C" />
+              <path d="M8.62489 8.25018H3.37476C3.18643 8.25018 3.03381 8.40282 3.03381 8.59112V13.1594C3.03381 13.3477 3.18643 13.5004 3.37476 13.5004H8.62489C8.81323 13.5004 8.96584 13.3477 8.96584 13.1594V8.59112C8.96584 8.40285 8.81323 8.25018 8.62489 8.25018ZM3.71571 10.4421H5.65889V11.3085H3.71571V10.4421ZM6.34076 10.4421H8.28394V11.3085H6.34076V10.4421ZM8.28397 9.76028H6.34079V8.93207H8.28397V9.76028ZM5.65889 8.93207V9.76024H3.71571V8.93207H5.65889ZM3.71571 11.9904H5.65889V12.8186H3.71571V11.9904ZM6.34076 12.8185V11.9904H8.28394V12.8185H6.34076Z" fill="white" />
+            </svg>
+
+            Sheets
+          </TabsTrigger>
+
+          {/* Docs Tab */}
+          <TabsTrigger
+            value="docs"
+            className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 px-2 py-1 rounded-md transition duration-200 text-center"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className='mr-2'>
+              <path d="M15.625 5V16.5625C15.625 17.0819 15.2069 17.5 14.6875 17.5H4.6875C4.16813 17.5 3.75 17.0819 3.75 16.5625V2.8125C3.75 2.29375 4.16813 1.875 4.6875 1.875H12.5" fill="#7349BD" />
+              <path d="M12.5 1.875V4.0625C12.5 4.58187 12.9181 5 13.4375 5H15.625L12.5 1.875Z" fill="#B7A2DD" />
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M6.255 8.43685C6.17212 8.43685 6.09264 8.4698 6.03403 8.5284C5.97543 8.58701 5.9425 8.66647 5.9425 8.74935C5.9425 8.83223 5.97543 8.91177 6.03403 8.97038C6.09264 9.02898 6.17212 9.06185 6.255 9.06185C6.33789 9.06185 6.41737 9.02898 6.47598 8.97038C6.53458 8.91177 6.5675 8.83223 6.5675 8.74935C6.5675 8.66647 6.53458 8.58701 6.47598 8.5284C6.41737 8.4698 6.33789 8.43685 6.255 8.43685ZM7.505 8.43685C7.42212 8.43685 7.34264 8.4698 7.28403 8.5284C7.22543 8.58701 7.1925 8.66647 7.1925 8.74935C7.1925 8.83223 7.22543 8.91177 7.28403 8.97038C7.34264 9.02898 7.42212 9.06185 7.505 9.06185H13.125C13.2079 9.06185 13.2874 9.02898 13.346 8.97038C13.4046 8.91177 13.4375 8.83223 13.4375 8.74935C13.4375 8.66647 13.4046 8.58701 13.346 8.5284C13.2874 8.4698 13.2079 8.43685 13.125 8.43685H7.505ZM6.255 9.68685C6.17212 9.68685 6.09264 9.7198 6.03403 9.7784C5.97543 9.83701 5.9425 9.91647 5.9425 9.99935C5.9425 10.0822 5.97543 10.1618 6.03403 10.2204C6.09264 10.279 6.17212 10.3119 6.255 10.3119C6.33789 10.3119 6.41737 10.279 6.47598 10.2204C6.53458 10.1618 6.5675 10.0822 6.5675 9.99935C6.5675 9.91647 6.53458 9.83701 6.47598 9.7784C6.41737 9.7198 6.33789 9.68685 6.255 9.68685ZM7.505 9.68685C7.42212 9.68685 7.34264 9.7198 7.28403 9.7784C7.22543 9.83701 7.1925 9.91647 7.1925 9.99935C7.1925 10.0822 7.22543 10.1618 7.28403 10.2204C7.34264 10.279 7.42212 10.3119 7.505 10.3119H13.125C13.2079 10.3119 13.2874 10.279 13.346 10.2204C13.4046 10.1618 13.4375 10.0822 13.4375 9.99935C13.4375 9.91647 13.4046 9.83701 13.346 9.7784C13.2874 9.7198 13.2079 9.68685 13.125 9.68685H7.505ZM6.255 10.9369C6.17212 10.9369 6.09264 10.9698 6.03403 11.0284C5.97543 11.087 5.9425 11.1665 5.9425 11.2494C5.9425 11.3322 5.97543 11.4118 6.03403 11.4704C6.09264 11.529 6.17212 11.5619 6.255 11.5619C6.33789 11.5619 6.41737 11.529 6.47598 11.4704C6.53458 11.4118 6.5675 11.3322 6.5675 11.2494C6.5675 11.1665 6.53458 11.087 6.47598 11.0284C6.41737 10.9698 6.33789 10.9369 6.255 10.9369ZM7.505 10.9369C7.42212 10.9369 7.34264 10.9698 7.28403 11.0284C7.22543 11.087 7.1925 11.1665 7.1925 11.2494C7.1925 11.3322 7.22543 11.4118 7.28403 11.4704C7.34264 11.529 7.42212 11.5619 7.505 11.5619H13.125C13.2079 11.5619 13.2874 11.529 13.346 11.4704C13.4046 11.4118 13.4375 11.3322 13.4375 11.2494C13.4375 11.1665 13.4046 11.087 13.346 11.0284C13.2874 10.9698 13.2079 10.9369 13.125 10.9369H7.505Z" fill="#F9F9F9" />
+            </svg>
+
+            Forms
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
     </div>
   );
 };
 
-export default Select;
+export default LinkedinTabs;

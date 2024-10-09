@@ -1,4 +1,3 @@
-// AccordionDemo.js
 import React, { useState } from 'react';
 import {
   Accordion,
@@ -21,6 +20,7 @@ export function AccordionDemo() {
   const [currentItem, setCurrentItem] = useState({ id: null, title: '', content: '' });
   const [newItem, setNewItem] = useState({ title: '', content: '' });
   const [error, setError] = useState('');
+  console.log(shortcuts)
 
   // Handle opening the edit dialog
   const handleEdit = (item) => {
@@ -30,14 +30,7 @@ export function AccordionDemo() {
 
   // Handle saving the edited item
   const handleSave = () => {
-    // if (!currentItem.title.trim() || !currentItem.content.trim()) {
-        console.log(currentItem)
-        editCommand(currentItem.id, currentItem.title, currentItem.content)
-    // }
-
-    // Save changes locally and update in Firebase (consider adding updateCommand function in provider if needed)
-    // Example: updateCommand(currentItem.id, currentItem.title, currentItem.content);
-
+    editCommand(currentItem.id, currentItem.title, currentItem.content);
     setOpenEditDialog(false);
     setError('');
   };
@@ -122,7 +115,13 @@ export function AccordionDemo() {
                     </AccordionTrigger>
                     <AccordionContent>
                       <Box>
-                        <Typography variant="body2">{item.content}</Typography>
+                        {/* Display content with white-space preserved */}
+                        <Typography
+                          variant="body2"
+                          sx={{ whiteSpace: 'pre-wrap' }} // This preserves tabs, spaces, and newlines
+                        >
+                          {item.content}
+                        </Typography>
                       </Box>
                     </AccordionContent>
                   </AccordionItem>

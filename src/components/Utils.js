@@ -13,37 +13,38 @@ export const removeDuplicates = (arr) => {
 
 
   export const colorSchemes = [
-    { bg: '#0B3D91', textColor: '#FFFFFF' }, // Deep Blue with white text
-    { bg: '#BF360C', textColor: '#FFFFFF' }, // Rust with white text
-    { bg: '#004D40', textColor: '#FFFFFF' }, // Dark Teal with white text
-    { bg: '#4A235A', textColor: '#FFFFFF' }, // Deep Purple with white text
-    { bg: '#1C2833', textColor: '#FFFFFF' }, // Charcoal with white text
-    { bg: '#512E5F', textColor: '#FFFFFF' }, // Grape with white text
-    { bg: '#1B2631', textColor: '#FFFFFF' }, // Midnight with white text
-    { bg: '#283747', textColor: '#FFFFFF' }, // Steel with white text
-    { bg: '#3D3D3D', textColor: '#FFFFFF' }, // Graphite with white text
-    { bg: '#A93226', textColor: '#FFFFFF' }, // Dark Red with white text
-    { bg: '#4D5656', textColor: '#FFFFFF' }, // Slate with white text
-    { bg: '#873600', textColor: '#FFFFFF' }, // Dark Orange with white text
-    { bg: '#0B5345', textColor: '#FFFFFF' }, // Dark Emerald with white text
-    { bg: '#6E2C00', textColor: '#FFFFFF' }, // Burnt Umber with white text
-    { bg: '#1B4F72', textColor: '#FFFFFF' }, // Dark Azure with white text
-    { bg: '#4A235A', textColor: '#FFFFFF' }, // Royal Purple with white text
-    { bg: '#512E5F', textColor: '#FFFFFF' }, // Dark Violet with white text
-    { bg: '#154360', textColor: '#FFFFFF' }, // Navy Blue with white text
-    { bg: '#4A235A', textColor: '#FFFFFF' }, // Deep Violet with white text
-    { bg: '#1A5276', textColor: '#FFFFFF' }, // Ocean Blue with white text
-    { bg: '#186A3B', textColor: '#FFFFFF' }, // Forest Green with white text
-    { bg: '#4D5656', textColor: '#FFFFFF' }, // Granite with white text
-    { bg: '#424949', textColor: '#FFFFFF' }, // Dark Grey with white text
-    { bg: '#512E5F', textColor: '#FFFFFF' }, // Dark Indigo with white text
-    { bg: '#1C2833', textColor: '#FFFFFF' }, // Deep Charcoal with white text
-    { bg: '#873600', textColor: '#FFFFFF' }, // Mahogany with white text
-    { bg: '#0E6251', textColor: '#FFFFFF' }, // Dark Teal with white text
-    { bg: '#154360', textColor: '#FFFFFF' }, // Dark Sapphire with white text
-    { bg: '#641E16', textColor: '#FFFFFF' }, // Maroon with white text
-    { bg: '#1B2631', textColor: '#FFFFFF' }, // Black Pearl with white text
-];
+    { bg: 'rgba(11, 61, 145, 0.1)', textColor: '#0B3D91' }, // Deep Blue with white text
+    { bg: 'rgba(191, 54, 12, 0.1)', textColor: '#BF360C' }, // Rust with white text
+    { bg: 'rgba(0, 77, 64, 0.1)', textColor: '#004D40' }, // Dark Teal with white text
+    { bg: 'rgba(74, 35, 90, 0.1)', textColor: '#4A235A' }, // Deep Purple with white text
+    { bg: 'rgba(28, 40, 51, 0.1)', textColor: '#1C2833' }, // Charcoal with white text
+    { bg: 'rgba(81, 46, 95, 0.1)', textColor: '#512E5F' }, // Grape with white text
+    { bg: 'rgba(27, 38, 49, 0.1)', textColor: '#1B2631' }, // Midnight with white text
+    { bg: 'rgba(40, 55, 71, 0.1)', textColor: '#283747' }, // Steel with white text
+    { bg: 'rgba(61, 61, 61, 0.1)', textColor: '#3D3D3D' }, // Graphite with white text
+    { bg: 'rgba(169, 50, 38, 0.1)', textColor: '#A93226' }, // Dark Red with white text
+    { bg: 'rgba(77, 86, 86, 0.1)', textColor: '#4D5656' }, // Slate with white text
+    { bg: 'rgba(135, 54, 0, 0.1)', textColor: '#873600' }, // Dark Orange with white text
+    { bg: 'rgba(11, 83, 69, 0.1)', textColor: '#0B5345' }, // Dark Emerald with white text
+    { bg: 'rgba(110, 44, 0, 0.1)', textColor: '#6E2C00' }, // Burnt Umber with white text
+    { bg: 'rgba(27, 79, 114, 0.1)', textColor: '#1B4F72' }, // Dark Azure with white text
+    { bg: 'rgba(74, 35, 90, 0.1)', textColor: '#4A235A' }, // Royal Purple with white text
+    { bg: 'rgba(81, 46, 95, 0.1)', textColor: '#512E5F' }, // Dark Violet with white text
+    { bg: 'rgba(21, 67, 96, 0.1)', textColor: '#154360' }, // Navy Blue with white text
+    { bg: 'rgba(74, 35, 90, 0.1)', textColor: '#4A235A' }, // Deep Violet with white text
+    { bg: 'rgba(26, 82, 118, 0.1)', textColor: '#1A5276' }, // Ocean Blue with white text
+    { bg: 'rgba(24, 106, 59, 0.1)', textColor: '#186A3B' }, // Forest Green with white text
+    { bg: 'rgba(77, 86, 86, 0.1)', textColor: '#4D5656' }, // Granite with white text
+    { bg: 'rgba(66, 73, 73, 0.1)', textColor: '#424949' }, // Dark Grey with white text
+    { bg: 'rgba(81, 46, 95, 0.1)', textColor: '#512E5F' }, // Dark Indigo with white text
+    { bg: 'rgba(28, 40, 51, 0.1)', textColor: '#1C2833' }, // Deep Charcoal with white text
+    { bg: 'rgba(135, 54, 0, 0.1)', textColor: '#873600' }, // Mahogany with white text
+    { bg: 'rgba(14, 98, 81, 0.1)', textColor: '#0E6251' }, // Dark Teal with white text
+    { bg: 'rgba(21, 67, 96, 0.1)', textColor: '#154360' }, // Dark Sapphire with white text
+    { bg: 'rgba(100, 30, 22, 0.1)', textColor: '#641E16' }, // Maroon with white text
+    { bg: 'rgba(27, 38, 49, 0.1)', textColor: '#1B2631' }  // Black Pearl with white text
+  ];
+  
 
   
 

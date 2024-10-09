@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, session, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, session, dialog, BrowserView } = require('electron');
 const { autoUpdater } = require('electron-updater');
 
 
@@ -9,6 +9,7 @@ const accountFilePath = path.join(app.getPath('userData'), 'sheetAccounts.json')
 const linkedinDataFilePath = path.join(app.getPath('userData'), 'accounts.json');
 
 let mainWindow;
+let currentView=null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -28,10 +29,12 @@ function createWindow() {
     fullscreenable: true,
   });
 
-  mainWindow.webContents.openDevTools();
+
+  // console.log(path.join(__dirname, 'preload.js'))
+
+  // mainWindow.webContents.openDevTools();
   const indexPath = path.join(__dirname, '../build/index.html');
   mainWindow.loadURL(`file://${indexPath}`);
-  // mainWindow.loadURL('https://locolhost:3000')
 
   mainWindow.on('closed', function () {
     mainWindow = null;
@@ -72,14 +75,24 @@ function createWindow() {
   });
 }
 
+// app.disableHardwareAcceleration();
 app.on('ready', () => {
   createWindow();
-  session.defaultSession.cookies.get({ url: 'https://accounts.google.com' })
-  .then((cookies) => {
-    console.log(cookies);
-  }).catch((error) => {
-    console.error(error);
+});
+
+app.on("web-contents-created", (webContentsCreatedEvent, contents) => {
+  contents.on("will-navigate", (e, reqUrl) => {
+    console.log(`Popup is navigating to: ${reqUrl}`);
+    e.preventDefault()
   });
+  contents.on("new-window", (e, reqUrl) => {
+    e.preventDefault()
+    console.log(`Popup is window to: ${reqUrl}`);
+  });
+  contents.on("open-link", (e, reqUrl) => {
+    console.log(`Popup is llink to: ${reqUrl}`);
+  });
+
 });
 
 app.on('window-all-closed', function () {
@@ -96,21 +109,15 @@ app.on('activate', function () {
 
 app.setAsDefaultProtocolClient('hypertalent');
 
-function isJsonString(str) {
-  try {
-    JSON.parse(str);
-  } catch (e) {
-    return false;
-  }
-  return true;
-}
-
 ipcMain.handle('create-view', async () => {
   const partition = `persist:account${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const ses = session.fromPartition(partition);
   await ses.clearStorageData();
   return partition;
 });
+
+
+
 
 ipcMain.on('save-name', (event, data) => {
   const accounts = loadAccounts();
@@ -180,6 +187,7 @@ ipcMain.handle('logout', async () => {
     // await sharedSession.clearStorageData();
     // await sharedSession.clearCache();
     console.log('Cleared storage data from the shared session partition.');
+    
 
     // Optional: Send a callback message to the frontend if necessary
     // mainWindow.webContents.send('logout-callback', { success: true });
@@ -352,10 +360,14 @@ ipcMain.on('open-profile', (event, { url, id }) => {
   sendProfileNotification(url, id);
 });
 
+ipcMain.on('open-sheet-url',(event, {url, sheet})=>{
+  console.log(url)
+  mainWindow.webContents.send('opening-sheet-url',{url, sheet});
+})
+
 
 function sendProfileNotification(url, id) {
   mainWindow.webContents.send('profile-notification', { url, id });
-
 }
 
 

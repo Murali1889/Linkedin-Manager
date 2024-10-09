@@ -8,7 +8,8 @@ export const useAccounts = () => useContext(AccountsContext);
 export const AccountsProvider = ({ children }) => {
   const [accounts, setAccounts] = useState([]);
   const [activeAccount, setActiveAccount] = useState(null);
-  const [switchNav, setSwitchNav] = useState('linkedin')
+  const [switchNav, setSwitchNav] = useState('linkedin');
+  const [profileActive, setProfileActive] = useState(false)
 
   const switchAccount = (id) => {
     const selectedAccount = accounts.find((account) => account.id === id);
@@ -86,7 +87,9 @@ export const AccountsProvider = ({ children }) => {
         addAccount,
         setSwitchNav,
         switchNav,
-        getLinkedinAccounts, // Expose the getLinkedinAccounts function if needed elsewhere
+        getLinkedinAccounts,
+        profileActive,
+        setProfileActive,
       }}
     >
       {children}

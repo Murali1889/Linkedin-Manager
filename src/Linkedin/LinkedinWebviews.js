@@ -1,8 +1,7 @@
-// LinkedinWebviews.js
 import React, { useEffect, useRef, useContext, useState } from "react";
 import { useAccounts } from "./AccountsProvider"; // Accessing accounts context
 import PersonOffIcon from "@mui/icons-material/PersonOff"; // Import the icon for the empty state
-import { injectTryGetAccountName, goToProfile, injectShortcutObserver, injectProfileView, injectStayOnMessagingPage,  updateRoles, updateList, injectCustomJS, addLabel, updateLabels, updateLabelTags , storeShortcutsInIndexedDB, scriptTo } from "../Scripts/linkedinScripts";
+import { injectTryGetAccountName, goToProfile, injectShortcutObserver, injectStayOnMessagingPage, updateRoles, updateList, injectCustomJS, addLabel, updateLabels, updateLabelTags , storeShortcutsInIndexedDB, scriptTo } from "../Scripts/linkedinScripts";
 import { ProfileContext } from "../auth/ProfileProvider";
 import { useLabels } from "../auth/LabelsProvider";
 import { useShortcuts } from "../auth/ShortcutProvider";
@@ -16,13 +15,13 @@ const LinkedinWebviews = () => {
 
   const webviewRefs = useRef({}); // Store references to each webview element
 
-  // Effect to adjust z-index for active account's webviews
+  // Effect to adjust visibility for active account's webviews using display:none
+  console.log(activeAccount)
   useEffect(() => {
     if (activeAccount) {
       Object.keys(webviewRefs.current).forEach((id) => {
         if (webviewRefs.current[id]) {
-          webviewRefs.current[id].messaging.style.zIndex = id === activeAccount.id ? 10 : 1;
-          webviewRefs.current[id].profile.style.zIndex = id === activeAccount.id ? 10 : 1;
+          webviewRefs.current[id].messaging.style.display = id === activeAccount.id ? 'flex' : 'none';
         }
       });
     }
@@ -31,78 +30,44 @@ const LinkedinWebviews = () => {
   // Function to handle setting up the webview with the correct event listeners
   const setupWebview = (view, accountId, type) => {
     if (view) {
-      
-      view.addEventListener("dom-ready", () => {
-
+      view.addEventListener("dom-ready", async() => {
         if (type === "messaging") {
-          view.openDevTools();
           injectTryGetAccountName(view, accountId, changeName);
-          // changeUI(view)
-          injectStayOnMessagingPage(view)
-          updateLabels(labels, view)
+          injectStayOnMessagingPage(view);
+          updateLabels(labels, view);
           injectShortcutObserver(view, shortcuts);
           goToProfile(view, accountId);
-          updateRoles(selectedProfiles, view);
-          updateList(checkedItems, view)
           injectCustomJS(view, accountId);
           addLabel(view, accountId);
           updateLabelTags(view);
           storeShortcutsInIndexedDB(view, shortcuts);
-          scriptTo(view)
-          
-          
-        } else if (type === "profile") {
-          injectProfileView(view, accountId);
+          scriptTo(view);
+          injectSvg(view)
         }
       });
     }
   };
 
   // Listen for profile URL notifications and update the correct profile webview based on the account ID
-  useEffect(() => {
-    window.electron.onProfileNotification((data) => {
-      const { url, id } = data;
-      console.log(id)
-      // Check if the id exists in the webviewRefs and update the profile webview's src attribute
-      console.log(webviewRefs.current);
-      console.log(webviewRefs.current[id])
-      if (webviewRefs.current[id] && webviewRefs.current[id].profile) {
-        webviewRefs.current[id].profile.src = url;
-        setProfileActiveAccount(id);
-      }
-    });
-  }, []);
+
 
   useEffect(() => {
     if (selectedProfiles && !loading) {
-      console.log('checking...');
       if (Object.keys(webviewRefs.current).length > 0) {
-        console.log('uploading...');
-        
-        console.log(webviewRefs.current);
-  
-        // Iterate over the values of the webviewRefs object
         Object.values(webviewRefs.current).forEach((view) => {
           if (view.messaging) {
-            console.log(view.messaging);
             updateRoles(selectedProfiles, view.messaging);
           }
         });
       }
     }
   }, [selectedProfiles]);
-  
+
   useEffect(() => {
     if (checkedItems && !loading) {
-      console.log('checking...d');
       if (Object.keys(webviewRefs.current).length > 0) {
-        console.log('uploading...d');
-        console.log(webviewRefs.current);
-  
-        // Iterate over the values of the webviewRefs object
         Object.values(webviewRefs.current).forEach((view) => {
           if (view.messaging) {
-            console.log(view.messaging);
             updateList(checkedItems, view.messaging);
           }
         });
@@ -115,9 +80,7 @@ const LinkedinWebviews = () => {
       if (Object.keys(webviewRefs.current).length > 0) {
         Object.values(webviewRefs.current).forEach((view) => {
           if (view.messaging) {
-            console.log(view.messaging);
             updateLabels(labels, view.messaging);
-            // updateLabelTags(view.messaging)
           }
         });
       }
@@ -126,7 +89,6 @@ const LinkedinWebviews = () => {
 
   useEffect(() => {
     if (shortcuts) {
-      console.log(shortcuts)
       Object.values(webviewRefs.current).forEach((view) => {
         if (view.messaging) {
           storeShortcutsInIndexedDB(view.messaging, shortcuts); // Update IndexedDB with new shortcuts
@@ -134,11 +96,10 @@ const LinkedinWebviews = () => {
       });
     }
   }, [shortcuts]);
-  
 
   return (
     <div
-      className="flex flex-col transition-all duration-300 ease-in-out w-full h-full absolute bg-white"
+      className="flex flex-col transition-all duration-300 ease-in-out w-full h-full absolute bg-white "
       style={{ zIndex: switchNav === "sheets" ? 0 : 1 }}
     >
       <div className="relative flex-grow w-full h-full overflow-x-scroll flex">
@@ -146,13 +107,10 @@ const LinkedinWebviews = () => {
           accounts.map((account) => (
             <div
               key={account.id}
-              
               className="flex h-full w-full flex-nowrap absolute"
-              style={{ zIndex: activeAccount?.id === account.id ? 10 : 1 }}
+              style={{ display: activeAccount?.id === account.id ? 'block' : 'none' }}
             >
-              {/* Container for messaging and profile webviews */}
               <div className="flex h-full w-full" style={{ minWidth: "100%" }}>
-                {/* Messaging Webview */}
                 <div className="w-full h-full flex-shrink-0">
                   <webview
                     ref={(el) => {
@@ -175,32 +133,10 @@ const LinkedinWebviews = () => {
                     preload="../public/preload.js"
                   />
                 </div>
-
-                {/* Profile Webview */}
-                <div className="w-full h-full flex-shrink-0">
-                  <webview
-                    ref={(el) => {
-                      if (el) {
-                        webviewRefs.current[account.id].profile = el;
-                        setupWebview(el, account.id, "profile"); // Attach event listeners for profile webview
-                      }
-                    }}
-                    src="about:blank" // Initially set to blank; will update when a URL is received
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      background: "white",
-                    }}
-                    partition={account.partition}
-                    // preload="../public/preload.js"
-                    data-id={account.id}
-                  />
-                </div>
               </div>
             </div>
           ))
         ) : (
-          // Display message and icon when no LinkedIn accounts are available
           <div className="flex flex-col items-center justify-center w-full h-full text-center">
             <PersonOffIcon style={{ fontSize: 80, color: "#9CA3AF" }} />
             <h2 className="text-xl font-semibold text-gray-600 mt-4">No LinkedIn Accounts Available</h2>
